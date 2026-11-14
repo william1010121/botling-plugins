@@ -1,0 +1,8 @@
+node_modules/
+__pycache__/
+.DS_Store
+# a plugin's own build output caches
+*.tsbuildinfo
+# script-image-card writes its pictures here
+botling-components-basic/components/script-image-card/cache/
+botling-components-basic/components/script-image-card/script-image.conf

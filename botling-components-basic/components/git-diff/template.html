@@ -1,0 +1,220 @@
+<meta name="ccb-kit" content="1">
+<style>
+  html[data-surface="board"], html[data-surface="board"] body, html[data-surface="board"] #app { height:100%; margin:0; }
+  .gd-card { --ccb-pad:12px; }
+  html[data-surface="board"] .gd-card { height:100%; }
+  .gd { display:flex; flex-direction:column; gap:10px; flex:1; min-width:0; min-height:0; }
+  .mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+
+  .gd-head { min-width:0; padding-right:28px; }
+  .gd-meta { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; font-size:12px; line-height:18px; color:var(--muted); }
+  .gd-repo { color:var(--text); font-weight:600; }
+  .gd-br { padding:0 7px; border-radius:6px; background:var(--chip); color:var(--text); font-size:11px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .gd-hash { color:var(--link); }
+  .gd-subject { margin-top:3px; font-size:15px; font-weight:600; line-height:1.35; color:var(--text); overflow-wrap:anywhere; }
+
+  .gd-tot { display:flex; flex-wrap:wrap; align-items:baseline; gap:2px 12px; font-size:13px; color:var(--muted); }
+  .gd-a { color:var(--green); }
+  .gd-d { color:var(--error); }
+  .gd-tot .gd-a, .gd-tot .gd-d { font-weight:600; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .gd-bar { display:flex; height:4px; width:64px; gap:1px; border-radius:2px; overflow:hidden; align-self:center; }
+  .gd-bar i { display:block; height:100%; }
+  .gd-bar .ba { background:var(--green); }
+  .gd-bar .bd { background:var(--error); }
+  .gd-note { padding:6px 10px; border-radius:8px; background:var(--chip); color:var(--muted); font-size:12px; line-height:1.45; overflow-wrap:anywhere; }
+
+  .gd-files { display:flex; flex-direction:column; gap:6px; min-height:0; }
+  .gd-file { flex:none; border:1px solid var(--border); border-radius:10px; overflow:hidden; min-width:0; }
+  .gd-fh { display:flex; align-items:center; gap:8px; width:100%; min-height:44px; margin:0; padding:0 10px; border:0; background:transparent; color:var(--text); font:inherit; font-size:12px; text-align:left; cursor:pointer; transition:background .15s; }
+  .gd-fh:hover { background:var(--hover); }
+  .gd-fh:active { background:var(--selected); }
+  .gd-fh:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; }
+  .gd-fh.static { cursor:default; }
+  .gd-fh.static:hover { background:transparent; }
+  .gd-chev { flex:none; width:10px; color:var(--muted); font-size:10px; transition:transform .15s; }
+  .gd-file.open .gd-chev { transform:rotate(90deg); }
+  .gd-badge { flex:none; min-width:18px; height:18px; line-height:18px; padding:0 4px; border-radius:5px; text-align:center; font-size:11px; font-weight:700; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; background:var(--chip); color:var(--muted); }
+  .gd-badge.added { background:color-mix(in srgb, var(--green) 18%, transparent); color:var(--green); }
+  .gd-badge.deleted { background:color-mix(in srgb, var(--error) 18%, transparent); color:var(--error); }
+  .gd-badge.modified { background:color-mix(in srgb, var(--blue) 18%, transparent); color:var(--link); }
+  .gd-fp { flex:1 1 auto; min-width:0; display:flex; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; white-space:nowrap; }
+  .gd-fdir { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; color:var(--muted); direction:rtl; text-align:left; }
+  .gd-fdir bdi { unicode-bidi:isolate; }
+  .gd-fbase { flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; font-weight:600; }
+  .gd-fn { flex:none; font-size:11px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+
+  .gd-body { display:none; max-height:360px; overflow:auto; overscroll-behavior:contain; border-top:1px solid var(--border); background:var(--code); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:18px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  .gd-file.open .gd-body { display:block; }
+  .gd-grid { width:max-content; min-width:100%; }
+  .gd-ln { padding:0 10px; white-space:pre; color:var(--text); }
+  .gd-ln.add { background:color-mix(in srgb, var(--green) 16%, transparent); color:var(--green); }
+  .gd-ln.del { background:color-mix(in srgb, var(--error) 16%, transparent); color:var(--error); }
+  .gd-ln.hunk { color:var(--link); opacity:.8; }
+  .gd-ln.fhd { color:var(--faint); }
+  .gd-nodiff { padding:10px; font-size:12px; color:var(--muted); font-family:-apple-system,"PingFang TC",sans-serif; }
+
+  /* Tiny tile (about one cell): just the numbers */
+  .gd-tiny { flex:1; display:flex; flex-direction:column; justify-content:center; gap:2px; min-width:0; min-height:0; }
+  .gd-big { font-size:22px; font-weight:700; line-height:1.15; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .gd-big span { margin-right:8px; }
+  .gd-sm { font-size:12px; color:var(--muted); }
+
+  /* Short Board tile: header, totals and a scrolling list, no expanding */
+  .gd.short .gd-subject { font-size:14px; }
+  .gd.short .gd-files { overflow-y:auto; flex:1 1 0; scrollbar-width:thin; gap:0; }
+  .gd.short .gd-file { border:0; border-radius:0; border-bottom:1px solid var(--border); }
+  .gd.short .gd-fh { min-height:32px; padding:0 2px; }
+  html[data-surface="board"] .gd.full .gd-files { overflow-y:auto; flex:1 1 0; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  html[data-surface="board"] .gd.full .gd-body { max-height:none; }
+  @container ccb (max-width: 260px) { .gd-subject { font-size:14px; } .gd-bar { display:none; } .gd-fh { padding:0 8px; gap:6px; } }
+</style>
+<div id="app"></div>
+<script>
+const { html, render, useState, useEffect, useSize, useSurface, Card } = ccb.kit;
+
+const t = (v) => ((v === undefined || v === null) ? '' : String(v));
+const n = (v) => { const x = Number(v); return Number.isFinite(x) && x >= 0 ? x : 0; };
+
+// Data may arrive as an object or a JSON string; anything unreadable counts as no data.
+function prepare(raw) {
+  if (typeof raw === 'string') { try { raw = JSON.parse(raw); } catch (e) { raw = null; } }
+  const d = (raw && typeof raw === 'object') ? raw : {};
+  const files = (Array.isArray(d.files) ? d.files : []).filter((f) => f && typeof f === 'object' && t(f.path)).map((f) => {
+    const diff = t(f.diff).replace(/\r\n?/g, '\n').replace(/\n+$/, '');
+    let a = f.additions, de = f.deletions;
+    if ((a === undefined || a === null || de === undefined || de === null) && diff) {
+      let ca = 0, cd = 0;
+      for (const l of diff.split('\n')) { if (l.startsWith('+') && !l.startsWith('+++')) ca++; else if (l.startsWith('-') && !l.startsWith('---')) cd++; }
+      if (a === undefined || a === null) a = ca;
+      if (de === undefined || de === null) de = cd;
+    }
+    const s = t(f.status).toLowerCase();
+    return { path: t(f.path), additions: n(a), deletions: n(de), status: s === 'added' || s === 'deleted' ? s : 'modified', diff };
+  });
+  const tt = (d.totals && typeof d.totals === 'object') ? d.totals : {};
+  const totals = {
+    files: tt.files !== undefined ? n(tt.files) : files.length,
+    additions: tt.additions !== undefined ? n(tt.additions) : files.reduce((s, f) => s + f.additions, 0),
+    deletions: tt.deletions !== undefined ? n(tt.deletions) : files.reduce((s, f) => s + f.deletions, 0)
+  };
+  const head = { repo: t(d.repo), branch: t(d.branch), commit: t(d.commit), subject: t(d.subject), note: t(d.note) };
+  return { ...head, files, totals, label: totals.files + (totals.files === 1 ? ' file' : ' files') };
+}
+
+function Header({ p }) {
+  const title = p.subject || (p.commit ? '' : 'Working tree changes');
+  return html`<div class="gd-head">
+    ${(p.repo || p.branch || p.commit) && html`<div class="gd-meta">
+      ${p.repo && html`<span class="gd-repo">${p.repo}</span>`}
+      ${p.branch && html`<span class="gd-br mono" title=${p.branch}>${p.branch}</span>`}
+      ${p.commit && html`<span class="gd-hash mono">${p.commit}</span>`}
+    </div>`}
+    ${title && html`<div class="gd-subject">${title}</div>`}
+  </div>`;
+}
+
+function Totals({ p }) {
+  const { additions, deletions } = p.totals;
+  return html`<div class="gd-tot">
+    <span>${p.label}</span>
+    <span class="gd-a">+${additions}</span>
+    <span class="gd-d">−${deletions}</span>
+    ${additions + deletions > 0 && html`<div class="gd-bar"><i class="ba" style=${{ flex: String(additions) }}></i><i class="bd" style=${{ flex: String(deletions) }}></i></div>`}
+  </div>`;
+}
+
+function FilePath({ path }) {
+  const i = path.lastIndexOf('/');
+  return html`<span class="gd-fp" title=${path}>
+    ${i > 0 && html`<span class="gd-fdir"><bdi>${path.slice(0, i + 1)}</bdi></span>`}
+    <span class="gd-fbase">${i >= 0 ? path.slice(i + 1) : path}</span>
+  </span>`;
+}
+
+function FileStat({ f }) {
+  return html`<span class="gd-fn">
+    ${f.additions > 0 && html`<span class="gd-a">+${f.additions}</span>`}
+    ${f.additions > 0 && f.deletions > 0 && ' '}
+    ${f.deletions > 0 && html`<span class="gd-d">−${f.deletions}</span>`}
+  </span>`;
+}
+
+function lineClass(line) {
+  if (line.startsWith('+++') || line.startsWith('---') || line.startsWith('diff ') || line.startsWith('index ')) return 'fhd';
+  if (line.startsWith('@@')) return 'hunk';
+  if (line.startsWith('+')) return 'add';
+  if (line.startsWith('-')) return 'del';
+  return '';
+}
+
+function Diff({ text }) {
+  return html`<div class="gd-grid">${text.split('\n').map((line, i) =>
+    html`<div key=${i} class=${'gd-ln ' + lineClass(line)}>${line === '' ? ' ' : (line.length > 2000 ? line.slice(0, 2000) + '…' : line)}</div>`)}</div>`;
+}
+
+function File({ f, expandable, isOpen, onToggle }) {
+  const badge = html`<span class=${'gd-badge ' + f.status} title=${f.status}>${f.status === 'added' ? 'A' : f.status === 'deleted' ? 'D' : 'M'}</span>`;
+  if (!expandable) {
+    return html`<div class="gd-file"><button type="button" class="gd-fh static" tabindex="-1">${badge}<${FilePath} path=${f.path} /><${FileStat} f=${f} /></button></div>`;
+  }
+  return html`<div class=${'gd-file' + (isOpen ? ' open' : '')}>
+    <button type="button" class="gd-fh" aria-expanded=${isOpen ? 'true' : 'false'} onClick=${onToggle}>
+      <span class="gd-chev">▶</span>${badge}<${FilePath} path=${f.path} /><${FileStat} f=${f} />
+    </button>
+    <div class="gd-body">${f.diff ? html`<${Diff} text=${f.diff} />` : html`<div class="gd-nodiff">No diff to display</div>`}</div>
+  </div>`;
+}
+
+function Viewer({ p, mode }) {
+  // Open files by index; the first starts open. Kept while the size changes, started again (new key) whenever data arrives.
+  const [open, setOpen] = useState(() => new Set(p.files.length ? [0] : []));
+  const toggle = (i) => setOpen((s) => { const x = new Set(s); if (x.has(i)) x.delete(i); else x.add(i); return x; });
+
+  if (mode === 'tiny') {
+    return html`<div class="gd"><div class="gd-tiny">
+      <div class="gd-big"><span class="gd-a">+${p.totals.additions}</span><span class="gd-d">−${p.totals.deletions}</span></div>
+      <div class="gd-sm">${p.label}${p.commit ? ' · ' + p.commit : ''}</div>
+    </div></div>`;
+  }
+  return html`<div class=${'gd ' + mode}>
+    <${Header} p=${p} />
+    <${Totals} p=${p} />
+    ${p.note && mode === 'full' && html`<div class="gd-note">${p.note}</div>`}
+    ${p.files.length
+      ? html`<div class="gd-files">${p.files.map((f, i) =>
+          html`<${File} key=${i} f=${f} expandable=${mode === 'full'} isOpen=${open.has(i)} onToggle=${() => toggle(i)} />`)}</div>`
+      : html`<div class="gd-sm" style="font-size:13px">No changes</div>`}
+  </div>`;
+}
+
+// One count per data event (ccb.onData: "each new data", also a refresh or a re-sent identical value), so
+// the viewer can start over for each one the way the old frame redraw did. useData() is not used: it
+// only redraws when the value changes, and ccb.onData must not be called next to it.
+function useDataEvents() {
+  const [s, setS] = useState(() => ({ raw: ccb.data, n: 1 }));
+  useEffect(() => (ccb.onData ? ccb.onData((d) => setS((x) => ({ raw: d, n: x.n + 1 }))) : undefined), []);
+  return s;
+}
+
+function GitDiff() {
+  const ev = useDataEvents();
+  const p = prepare(ev.raw);
+  const size = useSize();
+  const surface = useSurface();
+
+  // Chip as before: always "3 files +21 −5" (neutral).
+  const chip = p.label + ' +' + p.totals.additions + ' −' + p.totals.deletions;
+  useEffect(() => { ccb.setStatus({ text: chip, tone: 'neutral' }); }, [chip]);
+
+
+  const px = size && size.px;
+  let mode = 'full';
+  if (surface === 'board' && px) {
+    if (px.height < 150 || (px.width < 190 && px.height < 230)) mode = 'tiny';
+    else if (px.height < 300) mode = 'short';
+  }
+  return html`<${Card} class="gd-card"><${Viewer} key=${ev.n} p=${p} mode=${mode} /><//>`;
+}
+
+render(html`<${GitDiff} />`, document.getElementById('app'));
+</script>

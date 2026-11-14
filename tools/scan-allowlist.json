@@ -1,0 +1,12 @@
+{
+  "comment": "Reviewed false positives of tools/scan.mjs. id = first 16 hex of sha256(kind + NUL + value); no values are kept here.",
+  "entries": [
+    { "file": "ccb-laas/dist/web.js", "kind": "high-entropy string", "id": "737e35f19f4dd111", "note": "MathJax module path in the bundle (node_modules/mathjax-full/.../ColorV2Configuration)" },
+    { "file": "ccb-laas/dist/web.js", "kind": "private host", "id": "52c1a247bfd001ed", "note": "MathJax JS property (a variable named Configuration2 .local), not a host" },
+    { "file": "ccb-laas/dist/web.js", "kind": "private host", "id": "289de46432c67da8", "note": "MathJax JS property (Configuration .local), not a host" },
+    { "file": "ccb-session-usage/dist/host.mjs", "kind": "private host", "id": "e8dbeeffc992dd4e", "note": "Claude Code's settings.local.json file name, not a host" },
+    { "file": "ccb-session-usage/test/host-follow.test.mjs", "kind": "private host", "id": "e8dbeeffc992dd4e", "note": "Claude Code's settings.local.json file name, not a host" },
+    { "file": "tools/scan.mjs", "kind": "ssh target", "id": "fb37f85dc572f5d0", "note": "the scanner's own comment" },
+    { "file": "tools/scan.mjs", "kind": "ssh target", "id": "401ccd77bd78b24d", "note": "the scanner's own label" }
+  ]
+}

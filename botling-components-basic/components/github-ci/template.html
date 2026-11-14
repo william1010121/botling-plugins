@@ -1,0 +1,314 @@
+<meta name="ccb-kit" content="1">
+<style>
+  html, body { margin:0; background:transparent; }
+  html[data-surface="board"], html[data-surface="board"] body, html[data-surface="board"] #app { height:100%; }
+  .ci-card { --ccb-pad:12px; }
+  html[data-surface="board"] .ci-card { height:100%; }
+  .ci, .ci * { box-sizing:border-box; }
+  .ci { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; color:var(--text); font:14px/1.4 -apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif; overflow-wrap:anywhere; }
+  .ci > * { flex:none; }
+  .titlebar { display:flex; flex-wrap:wrap; align-items:baseline; gap:0 8px; padding-right:36px; }
+  .title { font-size:16px; font-weight:600; }
+  .summary { margin-top:4px; font-size:14px; font-weight:500; line-height:1.4; display:flex; align-items:center; gap:8px; }
+  .summary.ok { color:var(--green); } .summary.bad { color:var(--error); } .summary.run { color:var(--blue); }
+  .notitle .summary { padding-right:36px; }
+  .empty, .errtext { margin-top:10px; color:var(--muted); }
+  .errtext { white-space:pre-wrap; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:1.5; color:var(--error); }
+
+  .dot { flex:none; display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--faint, #8B8B96); }
+  .dot.ok { background:var(--green); } .dot.bad { background:var(--error); } .dot.warn { background:var(--orange); } .dot.off { background:var(--faint, #8B8B96); }
+  .dot.run { background:none; border:2px solid color-mix(in srgb, var(--text) 14%, transparent); border-top-color:var(--blue); animation:spin .9s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .dot.run { animation-duration:3s; } }
+
+  .body { margin-top:8px; }
+  html[data-surface="board"] .ci > .body { flex:1 1 0; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  .body > .empty, .body > .errtext { margin-top:2px; }
+  .runs { display:flex; flex-direction:column; gap:2px; }
+  .run { min-width:0; border-radius:8px; }
+  .rhead { display:flex; align-items:stretch; min-width:0; }
+  .rlink { flex:1 1 auto; min-width:0; display:flex; align-items:center; gap:10px; min-height:44px; padding:6px 8px; border:0; border-radius:8px; background:none; color:inherit; font:inherit; text-align:left; text-decoration:none; cursor:pointer; transition:background .15s, transform .1s; }
+  .rlink:hover { background:var(--hover); }
+  .rlink:active { transform:scale(.99); }
+  .rlink:focus-visible, .rexp:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; }
+  .rmain { flex:1 1 auto; min-width:0; }
+  .rline1 { display:flex; align-items:baseline; gap:8px; min-width:0; }
+  .rwf { flex:none; max-width:50%; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rtitle { flex:1 1 auto; min-width:0; color:var(--muted); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rline2 { margin-top:2px; display:flex; align-items:center; gap:8px; min-width:0; font-size:12px; color:var(--muted); }
+  .branch { min-width:0; max-width:60%; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--blue); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rtime { flex:none; margin-left:auto; font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .rexp { flex:none; width:44px; min-height:44px; border:0; border-radius:8px; background:none; color:var(--muted); font:inherit; font-size:16px; cursor:pointer; transition:background .15s, color .15s; }
+  .rexp:hover { background:var(--hover); color:var(--text); }
+  .rexp .chev { display:inline-block; transition:transform .2s; }
+  .run.open .rexp .chev { transform:rotate(90deg); }
+  .jobs { margin:0 0 6px 28px; padding:4px 0 4px 12px; border-left:2px solid color-mix(in srgb, var(--text) 14%, transparent); display:flex; flex-direction:column; gap:2px; }
+  .job { display:flex; align-items:center; gap:8px; min-height:24px; font-size:13px; min-width:0; }
+  .job .jname { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .job .jst { flex:none; font-size:12px; color:var(--muted); }
+  .jmsg { padding:4px 0; font-size:12px; color:var(--muted); }
+  .jmsg.load { display:flex; align-items:center; gap:8px; }
+  .jmsg.bad { color:var(--error); white-space:pre-wrap; }
+
+  /* list mode: one line per run */
+  .mode-list .rlink { min-height:34px; padding:3px 8px; }
+  .mode-list .rline1 { align-items:center; }
+  .mode-list .rwf { max-width:45%; }
+  .mode-list .rtime { margin-left:0; }
+
+  /* tiny mode */
+  .s1 { display:flex; flex-direction:column; justify-content:center; gap:4px; min-width:0; flex:1 1 0; min-height:0; padding-right:28px; }
+  .s1top { display:flex; align-items:center; gap:8px; font-size:15px; font-weight:600; min-width:0; }
+  .s1top .dot { width:16px; height:16px; }
+  .s1top .nm { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .s1sub { font-size:13px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .s1sub .rtime { margin:0; font-size:inherit; color:inherit; }
+  .s1sub.ok { color:var(--green); } .s1sub.bad { color:var(--error); } .s1sub.run { color:var(--blue); }
+</style>
+<div id="app"></div>
+<script>
+const { html, render, useState, useEffect, useLayoutEffect, useMemo, useRef, useSize, useSurface, Card } = ccb.kit;
+
+const toText = (v) => (v === undefined || v === null) ? '' : String(v);
+
+// ---- data: array of runs, JSON text, {"output": "..."} or plain error text ----
+const parseRuns = (raw) => {
+  let errorText = '';
+  const normalize = (v, depth) => {
+    if (depth > 3 || v === undefined || v === null) return [];
+    if (typeof v === 'string') {
+      const s = v.trim();
+      if (!s) return [];
+      if (/^[\[{]/.test(s)) { try { return normalize(JSON.parse(s), depth + 1); } catch (e) { /* plain text */ } }
+      errorText = s;
+      return [];
+    }
+    if (Array.isArray(v)) return v.filter((r) => r && typeof r === 'object');
+    if (typeof v === 'object') {
+      for (const k of ['output', 'text', 'stdout', 'result', 'content', 'data', 'runs']) {
+        if (v[k] !== undefined && v[k] !== null && typeof v[k] !== 'number') return normalize(v[k], depth + 1);
+      }
+    }
+    return [];
+  };
+  const runs = normalize(raw, 0).map((r) => ({
+    id: toText(r.databaseId),
+    workflow: toText(r.workflowName) || toText(r.name) || '(workflow)',
+    title: toText(r.displayTitle) || toText(r.title),
+    branch: toText(r.headBranch),
+    event: toText(r.event),
+    status: toText(r.status).toLowerCase(),
+    conclusion: toText(r.conclusion).toLowerCase(),
+    created: Date.parse(r.createdAt) || null,
+    updated: Date.parse(r.updatedAt) || null,
+    url: toText(r.url),
+  }));
+  runs.forEach((r) => { r.kind = kindOf(r.status, r.conclusion); r.label = labelOf(r.kind, r.conclusion, r.status); });
+  return { runs, errorText };
+};
+
+// kind: run | ok | bad | warn | off
+const kindOf = (status, conclusion) => {
+  if (status && status !== 'completed') return 'run';
+  if (conclusion === 'success') return 'ok';
+  if (conclusion === 'failure' || conclusion === 'timed_out' || conclusion === 'startup_failure') return 'bad';
+  if (conclusion === 'action_required' || conclusion === 'stale') return 'warn';
+  return 'off';
+};
+const labelOf = (kind, conclusion, status) => {
+  if (kind === 'run') return status === 'queued' || status === 'waiting' || status === 'pending' ? 'Queued' : 'In progress';
+  if (conclusion === 'success') return 'Success';
+  if (kind === 'bad') return conclusion === 'timed_out' ? 'Timed out' : 'Failed';
+  if (conclusion === 'cancelled') return 'Cancelled';
+  if (conclusion === 'skipped') return 'Skipped';
+  if (kind === 'warn') return 'Action required';
+  return conclusion ? conclusion : 'Finished';
+};
+
+const fmt = (ms) => {
+  if (ms === null || !Number.isFinite(ms) || ms < 0) return '–';
+  let s = Math.round(ms / 1000);
+  if (s < 60) return s + 's';
+  const m = Math.floor(s / 60); s = s % 60;
+  if (m < 60) return m + 'm ' + s + 's';
+  return Math.floor(m / 60) + 'h ' + (m % 60) + 'm';
+};
+const elapsedMs = (r) => {
+  if (r.created === null) return null;
+  if (r.kind === 'run') return Date.now() - r.created;
+  return r.updated === null ? null : r.updated - r.created;
+};
+
+const parseJobs = (out) => {
+  let text = out;
+  if (Array.isArray(out)) text = out.join('\n');
+  else if (out && typeof out === 'object') text = toText(out.output !== undefined ? out.output : JSON.stringify(out));
+  return toText(text).split(/\r?\n/).map((l) => l.replace(/\s+$/, '')).filter(Boolean).map((l) => {
+    const p = l.split('\t');
+    const clean = (x) => { x = toText(x).trim().toLowerCase(); return x === 'null' ? '' : x; };
+    const status = clean(p[1]), conclusion = clean(p[2]);
+    const kind = kindOf(status || 'completed', conclusion);
+    return { name: p[0], kind: kind, label: status ? labelOf(kind, conclusion, status) : '' };
+  });
+};
+
+const openUrl = (url) => {
+  if (!url) return;
+  const f = ccb.openUrl || ccb.openExternal || ccb.open;
+  if (typeof f === 'function') { try { f.call(ccb, url); return; } catch (e) { /* fall through */ } }
+  window.open(url, '_blank', 'noopener');
+};
+
+// One count per data event (ccb.onData: also a refresh or a re-sent identical value). The list starts over
+// for each one (open runs, cached jobs, layout, chip), the way the old frame redraw did. useData() is not
+// used: it only redraws when the value changes, and ccb.onData must not be called next to it.
+function useDataEvents() {
+  const [s, setS] = useState(() => ({ raw: ccb.data !== undefined ? ccb.data : null, n: 1 }));
+  useEffect(() => (ccb.onData ? ccb.onData((d) => setS((x) => ({ raw: d !== undefined ? d : ccb.data, n: x.n + 1 }))) : undefined), []);
+  return s;
+}
+
+function Jobs({ c }) {
+  if (!c || c.state === 'loading') return html`<div class="jobs"><div class="jmsg load"><span class="dot run"></span> Loading…</div></div>`;
+  if (c.state === 'error') return html`<div class="jobs"><div class="jmsg bad">${c.error}</div></div>`;
+  if (!c.jobs.length) return html`<div class="jobs"><div class="jmsg">No jobs</div></div>`;
+  return html`<div class="jobs">${c.jobs.map((j, i) => html`<div class="job" key=${i}>
+    <span class=${'dot ' + j.kind}></span><span class="jname" title=${j.name}>${j.name}</span><span class="jst">${j.label}</span>
+  </div>`)}</div>`;
+}
+
+function RunRow({ r, expandable, open, cache, onToggle }) {
+  const time = html`<span class="rtime">${fmt(elapsedMs(r))}</span>`;
+  const tip = r.workflow + (r.title ? ' · ' + r.title : '') + ' · ' + r.label;
+  const inner = [
+    html`<span class=${'dot ' + r.kind} key="d"></span>`,
+    expandable
+      ? html`<div class="rmain" key="m">
+          <div class="rline1"><span class="rwf">${r.workflow}</span>${r.title && html`<span class="rtitle">${r.title}</span>`}</div>
+          <div class="rline2">${r.branch && html`<span class="branch">${r.branch}</span>`}<span>${r.event ? r.event + ' · ' + r.label : r.label}</span>${time}</div>
+        </div>`
+      : html`<div class="rmain" key="m">
+          <div class="rline1"><span class="rwf">${r.workflow}</span>${r.branch && html`<span class="branch">${r.branch}</span>`}${r.title && html`<span class="rtitle">${r.title}</span>`}${time}</div>
+        </div>`,
+  ];
+  return html`<div class=${'run' + (expandable && open ? ' open' : '')}>
+    <div class="rhead">
+      ${r.url
+        ? html`<a class="rlink" href=${r.url} target="_blank" rel="noopener" title=${tip} onClick=${(ev) => { ev.preventDefault(); openUrl(r.url); }}>${inner}</a>`
+        : html`<div class="rlink" title=${tip}>${inner}</div>`}
+      ${expandable && r.id && html`<button class="rexp" type="button" aria-label="Show job details" aria-expanded=${open ? 'true' : 'false'} onClick=${onToggle}><span class="chev">›</span></button>`}
+    </div>
+    ${expandable && open && html`<${Jobs} c=${cache[r.id]} />`}
+  </div>`;
+}
+
+function TinyView({ errorText, newest }) {
+  if (errorText) return html`<div class="s1"><div class="s1top">Unavailable</div><div class="s1sub bad">${errorText.slice(0, 60)}</div></div>`;
+  if (!newest) return html`<div class="s1"><div class="s1top">GitHub CI</div><div class="s1sub">No runs</div></div>`;
+  const cls = newest.kind === 'ok' ? 'ok' : newest.kind === 'bad' ? 'bad' : newest.kind === 'run' ? 'run' : '';
+  return html`<div class="s1">
+    <div class="s1top" title=${newest.workflow + ' · ' + newest.label}><span class=${'dot ' + newest.kind}></span><span class="nm">${newest.workflow}</span></div>
+    <div class=${'s1sub ' + cls}>${newest.label + ' · '}<span class="rtime">${fmt(elapsedMs(newest))}</span></div>
+  </div>`;
+}
+
+function Runs({ raw }) {
+  const surface = useSurface();
+  const size = useSize();
+  const { runs, errorText } = useMemo(() => parseRuns(raw), [raw]);
+  const runningCount = runs.filter((r) => r.kind === 'run').length;
+  const newest = runs[0] || null;
+
+  const [, setTick] = useState(0);
+  const store = useRef(null);
+  if (!store.current) store.current = { expanded: new Set(), cache: {}, ver: 0, alive: true };
+  const s = store.current;
+  const touch = () => { s.ver++; if (s.alive) setTick((n) => n + 1); };
+  useEffect(() => () => { s.alive = false; }, []);
+
+  const loadJobs = (r) => {
+    const c = s.cache[r.id];
+    if (c && c.state !== 'error') return;
+    s.cache[r.id] = { state: 'loading' };
+    if (typeof ccb.runDetail !== 'function') { s.cache[r.id] = { state: 'error', error: 'Couldn\'t load job details' }; return; }
+    Promise.resolve().then(() => ccb.runDetail({ databaseId: r.id })).then((out) => {
+      s.cache[r.id] = { state: 'done', jobs: parseJobs(out) };
+    }).catch((e) => {
+      s.cache[r.id] = { state: 'error', error: (e && e.message) ? e.message : String(e) };
+    }).then(() => touch());
+  };
+  const toggle = (r) => {
+    if (s.expanded.has(r.id)) s.expanded.delete(r.id); else { s.expanded.add(r.id); loadJobs(r); }
+    touch();
+  };
+
+  // elapsed time ticks only while a run is in progress
+  useEffect(() => {
+    if (!runningCount) return undefined;
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [runningCount]);
+
+  // chip, as before: once for each data event
+  useEffect(() => {
+    if (typeof ccb.setStatus !== 'function') return;
+    try {
+      if (errorText) ccb.setStatus({ text: 'Error', tone: 'bad' });
+      else if (!newest) ccb.setStatus(null);
+      else if (runningCount) ccb.setStatus({ text: 'In progress', tone: 'neutral' });
+      else ccb.setStatus({ text: newest.label, tone: newest.kind === 'ok' ? 'good' : newest.kind === 'bad' ? 'bad' : newest.kind === 'warn' ? 'warning' : 'neutral' });
+    } catch (e) { /* chip is optional */ }
+  }, []);
+
+  // Board: widest content that fits, as before: full rows, one-line rows with the title, without it, fewer rows, then the newest run alone.
+  const px = size && size.px;
+  const w = px ? px.width : 0, h = px ? px.height : 0;
+  const steps = useMemo(() => {
+    const a = [{ mode: 'full', max: runs.length, title: true }, { mode: 'list', max: runs.length, title: true }, { mode: 'list', max: runs.length, title: false }];
+    for (let n = runs.length - 1; n >= 1; n--) a.push({ mode: 'list', max: n, title: false });
+    a.push({ mode: 'tiny', max: 0, title: false });
+    return a;
+  }, [runs.length]);
+  const last = steps.length - 1;
+  const board = surface === 'board';
+  const tinyBySize = board && w > 0 && h > 0 && w < 200 && h < 200;
+  const openIds = [...s.expanded].join(',');
+  const key = w + 'x' + h + '|' + openIds + '|' + s.ver;
+  const [fit, setFit] = useState({ k: '', i: 0 });
+  const idx = !board ? 0 : tinyBySize ? last : (fit.k === key ? fit.i : 0);
+  const step = board ? steps[idx] : steps[0];
+  const bodyRef = useRef(null);
+  useLayoutEffect(() => {
+    if (!board || tinyBySize || idx >= last || s.expanded.size) return;
+    const b = bodyRef.current;
+    if (b && b.scrollHeight > b.clientHeight + 1) setFit({ k: key, i: idx + 1 });
+  });
+
+  let content;
+  if (step.mode === 'tiny') content = html`<${TinyView} errorText=${errorText} newest=${newest} />`;
+  else {
+    let sumText, sumCls = '';
+    if (errorText) { sumText = 'Couldn\'t load runs'; sumCls = 'bad'; }
+    else if (!runs.length) sumText = 'No runs';
+    else if (runningCount) { sumText = runningCount + ' in progress'; sumCls = 'run'; }
+    else { sumText = 'Latest: ' + newest.label; sumCls = newest.kind === 'ok' ? 'ok' : (newest.kind === 'bad' ? 'bad' : ''); }
+    content = html`
+      ${step.title && html`<div class="titlebar"><span class="title">GitHub Actions</span></div>`}
+      <div class=${'summary ' + sumCls}>${runs.length > 0 && !errorText && html`<span class=${'dot ' + (runningCount ? 'run' : newest.kind)}></span>`}${sumText}</div>
+      <div class="body" ref=${bodyRef}>
+        ${errorText ? html`<div class="errtext">${errorText}</div>`
+          : !runs.length ? html`<div class="empty">No runs</div>`
+          : html`<div class="runs">${runs.slice(0, step.max).map((r, i) =>
+              html`<${RunRow} key=${i + ':' + r.id} r=${r} expandable=${step.mode === 'full'} open=${s.expanded.has(r.id)} cache=${s.cache} onToggle=${() => toggle(r)} />`)}</div>`}
+      </div>`;
+  }
+  return html`<div class=${'ci mode-' + step.mode + (step.title ? '' : ' notitle')}>${content}</div>`;
+}
+
+function App() {
+  const ev = useDataEvents();
+  return html`<${Card} class="ci-card"><${Runs} key=${ev.n} raw=${ev.raw} /><//>`;
+}
+
+render(html`<${App} />`, document.getElementById('app'));
+</script>

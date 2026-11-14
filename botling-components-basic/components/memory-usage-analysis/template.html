@@ -1,0 +1,129 @@
+<meta name="ccb-kit" content="1">
+<style>
+  .mu { display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .mu-head { font-size:16px; font-weight:600; line-height:1.4; overflow-wrap:anywhere; }
+  .mu-hero { display:flex; align-items:center; gap:14px; min-width:0; }
+  .mu-hero .ccb-stat { flex:none; }
+  .mu-hero .ccb-stat__value { font-size:34px; line-height:38px; white-space:nowrap; }
+  .mu-side { flex:1 1 auto; min-width:0; }
+  .mu-lbl { font-size:12px; color:var(--muted); }
+  .mu-sec { display:flex; flex-direction:column; gap:6px; padding-top:10px; border-top:1px solid var(--line); }
+  .mu-stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:8px; }
+  .mu-stats .ccb-stat__value { font-size:20px; line-height:24px; }
+  .mu-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:8px; }
+  .mu-proc { min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:10px; }
+  .mu-proc.warn { background:color-mix(in srgb, var(--orange) 10%, transparent); border-color:color-mix(in srgb, var(--orange) 45%, transparent); }
+  .mu-ph { display:flex; align-items:baseline; gap:8px; min-width:0; }
+  .mu-name { flex:1 1 auto; min-width:0; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .mu-badge { flex:none; padding:1px 6px; border-radius:6px; font-size:11px; font-weight:600; color:var(--orange-text); border:1px solid color-mix(in srgb, var(--orange) 45%, transparent); }
+  .mu-val { flex:none; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .mu-track { position:relative; height:6px; margin-top:6px; border-radius:3px; background:var(--chip); overflow:hidden; }
+  .mu-fill { height:100%; border-radius:3px; background:var(--blue); transition:width .4s ease; }
+  .mu-proc.warn .mu-fill { background:var(--orange); }
+  .mu-note { margin-top:6px; font-size:12px; line-height:1.45; color:var(--muted); overflow-wrap:anywhere; }
+  .mu-next { padding:9px 11px; border-radius:10px; font-size:13px; line-height:1.5; overflow-wrap:anywhere; background:color-mix(in srgb, var(--blue) 12%, transparent); border:1px solid color-mix(in srgb, var(--blue) 35%, transparent); }
+  .mu-next b { color:var(--blue); font-weight:600; margin-right:6px; }
+  .mu-tiny { height:100%; display:flex; flex-direction:column; justify-content:center; }
+  .mu-tiny .ccb-stat__value { font-size:44px; line-height:48px; white-space:nowrap; }
+  .mu-tiny.mu-word .ccb-stat__value { font-size:28px; line-height:32px; }
+
+  @container ccb (max-width: 380px) { .mu-hero .ccb-stat__value { font-size:30px; line-height:34px; } .mu-list { grid-template-columns:1fr; } }
+  /* short: gauge + top 3 processes (no notes); shorter: no headline; one row: only the gauge */
+  @container (max-height: 460px) { .mu-stats-sec, .mu-next, .mu-note { display:none; } .mu-proc:nth-child(n+4) { display:none; } .mu-sec { padding-top:8px; } .mu { gap:8px; } }
+  @container (max-height: 340px) { .mu-head { display:none; } }
+  @container (max-height: 210px) { .mu-procs { display:none; } }
+</style>
+<div id="app"></div>
+<script>
+const { html, render, useData, useSize, useSurface, useEffect, Card, Stat, Bar, Empty } = ccb.kit;
+
+const num = (v) => { if (typeof v === 'string') v = parseFloat(v); return (typeof v === 'number' && isFinite(v)) ? v : null; };
+const fmt = (v) => (Math.round(v * 10) / 10).toString();
+const clamp = (p) => Math.max(0, Math.min(100, p));
+const sizeText = (mb) => (mb >= 1024 ? fmt(mb / 1024) + ' GB' : Math.round(mb) + ' MB');
+// Thresholds: below 60% ok, below 85% warn, 85% and above bad.
+const toneOf = (p) => (p === null ? 'neutral' : (p < 60 ? 'ok' : (p < 85 ? 'warn' : 'bad')));
+const swapTone = (s) => (s < 1 ? 'ok' : (s < 4 ? 'warn' : 'bad'));
+const PRESSURE = { normal: ['Normal', 'ok', 'good'], warn: ['Warning', 'warn', 'warning'], critical: ['Critical', 'bad', 'bad'] };
+
+function Proc({ p, max }) {
+  const v = num(p.memMB);
+  const warn = p.flag === 'warn';
+  const name = p.name ? String(p.name) : '(unnamed)';
+  return html`<div class=${'mu-proc' + (warn ? ' warn' : '')}>
+    <div class="mu-ph">
+      <span class="mu-name" title=${name}>${name}</span>
+      ${warn && html`<span class="mu-badge">Warning</span>`}
+      <span class="mu-val">${v === null ? '–' : sizeText(v)}</span>
+    </div>
+    ${v !== null && max > 0 && html`<div class="mu-track"><div class="mu-fill" style=${{ width: clamp(v / max * 100) + '%' }}></div></div>`}
+    ${p.note && html`<div class="mu-note">${String(p.note)}</div>`}
+  </div>`;
+}
+
+function Processes({ procs }) {
+  let max = 0;
+  procs.forEach((p) => { const v = num(p.memMB); if (v !== null && v > max) max = v; });
+  return html`<div class="mu-sec mu-procs">
+    <div class="ccb-label">${'Top memory consumers (' + procs.length + ')'}</div>
+    <div class="mu-list">${procs.map((p, i) => html`<${Proc} key=${i} p=${p} max=${max} />`)}</div>
+  </div>`;
+}
+
+function MemoryUsage() {
+  const raw = useData();
+  const size = useSize();
+  const surface = useSurface();
+  const d = raw && typeof raw === 'object' ? raw : {};
+
+  const used = num(d.usedGB);
+  let total = num(d.totalGB);
+  const swap = num(d.swapUsedGB);
+  if (total !== null && total <= 0) total = null;
+  const pct = (used !== null && total !== null) ? used / total * 100 : null;
+  const pr = PRESSURE[d.pressure] || null;
+  const procs = (Array.isArray(d.processes) ? d.processes : []).filter((p) => p && typeof p === 'object');
+  const headline = d.headline ? String(d.headline) : '';
+  const next = d.nextStep ? String(d.nextStep) : '';
+  const tone = pct !== null ? toneOf(pct) : (pr ? pr[1] : 'neutral');
+
+  // Chip: "Memory 84%" coloured by pressure (else by the thresholds); "Memory warning" with only pressure; cleared with neither.
+  const chipTone = pr ? pr[2] : (pct !== null ? (pct < 60 ? 'good' : (pct < 85 ? 'warning' : 'bad')) : 'neutral');
+  const chip = pct !== null ? 'Memory ' + Math.round(pct) + '%' : (pr ? 'Memory ' + pr[0].toLowerCase() : '');
+  useEffect(() => { ccb.setStatus(chip ? { text: chip, tone: chipTone } : null); }, [chip, chipTone]);
+
+  const px = size.px || {};
+  const tiny = px.width <= 190 || (surface !== 'chat' && px.height <= 175 && px.width <= 260);
+  if (tiny) {
+    const word = pct === null && used === null && pr;
+    const value = pct !== null ? Math.round(pct) : (used !== null ? fmt(used) : (pr ? pr[0] : '–'));
+    const unit = pct !== null ? '%' : (used !== null ? 'GB' : undefined);
+    return html`<${Card}><div class=${'mu-tiny' + (word ? ' mu-word' : '')}><${Stat} label="Memory" value=${value} unit=${unit} tone=${tone} /></div><//>`;
+  }
+
+  const has = used !== null || pr || swap !== null || procs.length || headline || next;
+  if (!has) return html`<${Card} title="Memory Usage Analysis"><${Empty} title="No data yet" /><//>`;
+
+  return html`<${Card} title="Memory Usage Analysis">
+    <div class="mu">
+      ${headline && html`<div class="mu-head">${headline}</div>`}
+      ${used !== null && html`<div class="mu-hero">
+        <${Stat} value=${pct === null ? fmt(used) : String(Math.round(pct))} unit=${pct === null ? 'GB' : '%'} tone=${tone} />
+        <div class="mu-side">
+          ${pct !== null
+            ? html`<${Bar} label="Physical memory" value=${clamp(pct)} max=${100} valueText=${fmt(used) + ' / ' + fmt(total) + ' GB'} tone=${tone} />`
+            : html`<div class="mu-lbl">Physical memory</div>`}
+        </div>
+      </div>`}
+      ${(pr || swap !== null) && html`<div class="mu-sec mu-stats-sec"><div class="mu-stats">
+        ${pr && html`<${Stat} framed label="Memory pressure" value=${pr[0]} tone=${pr[1]} />`}
+        ${swap !== null && html`<${Stat} framed label="Swap used" value=${fmt(swap)} unit="GB" tone=${swapTone(swap)} />`}
+      </div></div>`}
+      ${procs.length > 0 && html`<${Processes} procs=${procs} />`}
+      ${next && html`<div class="mu-next"><b>Next step</b>${next}</div>`}
+    </div>
+  <//>`;
+}
+
+render(html`<${MemoryUsage} />`, document.getElementById('app'));
+</script>

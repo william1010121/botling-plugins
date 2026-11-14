@@ -1,0 +1,423 @@
+<meta name="ccb-kit" content="1">
+<style>
+  html[data-surface="board"], html[data-surface="board"] body, html[data-surface="board"] #app { height:100%; margin:0; }
+  .cl-card { --ccb-pad:12px; }
+  html[data-surface="board"] .cl-card { height:100%; }
+  .cl { display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; overflow-wrap:anywhere; }
+  .cl > * { flex:none; min-width:0; max-width:100%; }
+  .cl-lbl { font-size:12px; color:var(--muted); letter-spacing:.02em; }
+  .cl-mono { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .cl-vnum { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:28px; font-weight:700; line-height:1.15; color:var(--link); word-break:break-all; min-width:0; }
+  .cl-vdate { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+
+  /* custom dropdown: native select with the app's look and a chevron */
+  .cl-sel { position:relative; min-width:0; }
+  .cl-pick { display:block; width:100%; min-height:44px; margin:0; padding:0 38px 0 14px; border-radius:12px; border:1px solid var(--border); background:var(--chip); color:var(--text); font:inherit; font-size:15px; font-weight:600; -webkit-appearance:none; appearance:none; text-overflow:ellipsis; cursor:pointer; transition:border-color .18s, background .18s; }
+  .cl-pick:hover { border-color:var(--muted); }
+  .cl-pick option { background:var(--ground); color:var(--text); }
+  .cl-chev { position:absolute; right:17px; top:50%; width:8px; height:8px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); transform:translateY(-70%) rotate(45deg); pointer-events:none; }
+  .cl-pick:focus-visible, .cl-segb:focus-visible, .cl-tl-btn:focus-visible, .cl-rng:focus-visible, .cl-open:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+
+  /* 1x1: newest version + its first entry title */
+  .cl-one { justify-content:center; }
+  .cl-one .cl-vnum { margin-top:6px; }
+  .cl-t3 { margin-top:8px; font-size:13px; line-height:1.45; color:var(--text); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; word-break:break-word; }
+
+  /* 2x1: dropdown + first two entry titles */
+  .cl-two .cl-pick { min-height:40px; font-size:14px; }
+  .cl-rows { margin:10px 0 0; padding:0; list-style:none; }
+  .cl-row { position:relative; padding:6px 0 6px 14px; font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cl-row::before { content:''; position:absolute; left:2px; top:50%; width:5px; height:5px; margin-top:-2.5px; border-radius:50%; background:var(--muted); }
+  .cl-row.none { color:var(--muted); padding-left:0; }
+  .cl-row.none::before { display:none; }
+
+  /* 2x2 and up: toggle, header, controls, body */
+  .cl-seg { display:flex; min-width:0; border-radius:12px; border:1px solid var(--border); background:var(--chip); overflow:hidden; }
+  .cl-segb { flex:1 1 0; min-width:0; min-height:44px; margin:0; padding:0; border:0; background:transparent; color:var(--muted); font:inherit; font-size:14px; font-weight:500; cursor:pointer; transition:background .18s, color .18s; }
+  .cl-segb + .cl-segb { border-left:1px solid var(--border); }
+  .cl-segb:hover { color:var(--text); }
+  .cl-segb:active { background:var(--hover); }
+  .cl-segb.on { background:color-mix(in srgb, var(--blue) 16%, transparent); color:var(--link); font-weight:600; }
+  .cl-head { margin-top:14px; }
+  .cl-vrow { display:flex; align-items:baseline; flex-wrap:wrap; gap:4px 10px; min-width:0; }
+  .cl-vtheme { margin-top:4px; font-size:15px; font-weight:500; color:var(--text); line-height:1.4; }
+  .cl-pickw { margin-top:12px; }
+  .cl-slide { margin-top:12px; }
+  .cl-ends { display:flex; align-items:baseline; gap:8px; min-width:0; font-size:12px; color:var(--muted); }
+  .cl-end { flex:1 1 0; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .cl-end:last-child { text-align:right; }
+  .cl-cur { flex:0 1 auto; min-width:0; max-width:50%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; font-weight:700; color:var(--link); }
+  .cl-rng { display:block; -webkit-appearance:none; appearance:none; width:100%; max-width:100%; height:26px; margin:4px 0 0; padding:0; background:transparent; cursor:pointer; --p:100%; }
+  .cl-rng:disabled { opacity:.4; cursor:default; }
+  .cl-rng::-webkit-slider-runnable-track { height:4px; border-radius:2px; background:linear-gradient(to right, var(--blue) 0 var(--p), var(--border) var(--p) 100%); }
+  .cl-rng::-webkit-slider-thumb { -webkit-appearance:none; appearance:none; box-sizing:border-box; width:18px; height:18px; margin-top:-7px; border-radius:50%; border:2px solid var(--blue); background:var(--raised); box-shadow:0 1px 4px rgba(0,0,0,.28); transition:transform .15s; }
+  .cl-rng:active::-webkit-slider-thumb { transform:scale(1.12); }
+  .cl-scroll { min-height:0; max-height:380px; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; margin-top:14px; padding-right:6px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  .cl-scroll::-webkit-scrollbar { width:6px; }
+  .cl-scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+  .cl-body { min-width:0; animation:cl-fade .24s ease-out; }
+  @keyframes cl-fade { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+  .cl-none { margin-top:6px; color:var(--muted); }
+
+  /* sections: coloured pill heading, bullets with a bold title and a softer description */
+  .cl-grp { margin-top:16px; min-width:0; }
+  .cl-grp:first-child { margin-top:0; }
+  .cl-pill { display:inline-flex; align-items:center; height:22px; padding:0 9px; border-radius:999px; font-size:12px; font-weight:600; letter-spacing:.01em; color:var(--k, var(--muted)); background:color-mix(in srgb, var(--kc, var(--muted)) 16%, transparent); }
+  .k-add { --k:var(--green); --kc:var(--green); }
+  .k-fix { --k:var(--orange-text); --kc:var(--orange); }
+  .k-chg { --k:var(--link); --kc:var(--blue); }
+  .k-del { --k:var(--error); --kc:var(--error); }
+  .k-oth { --k:var(--muted); --kc:var(--muted); }
+  .cl-items { margin:6px 0 0; padding:0; list-style:none; }
+  .cl-it { position:relative; padding:9px 0 9px 16px; border-bottom:1px solid var(--line); min-width:0; }
+  .cl-it:last-child { border-bottom:0; }
+  .cl-it::before { content:''; position:absolute; left:2px; top:17px; width:6px; height:6px; border-radius:50%; background:var(--k, var(--muted)); }
+  .cl-it-t { font-weight:600; color:var(--text); line-height:1.4; }
+  .cl-it-t.plain { font-weight:400; }
+  .cl-it-d { margin-top:2px; font-size:13px; line-height:1.55; color:var(--muted); }
+  .cl-para { margin:8px 0; line-height:1.55; color:var(--muted); }
+  .cl strong { font-weight:600; }
+  .cl code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.92em; padding:0 4px; border-radius:4px; background:var(--code); word-break:break-all; }
+
+  /* Overview: vertical timeline */
+  .cl-tl { position:relative; margin:2px 0 0; padding:0 0 0 22px; list-style:none; }
+  .cl-tl::before { content:''; position:absolute; left:6px; top:22px; bottom:22px; width:2px; border-radius:1px; background:var(--border); }
+  .cl-tl-item { position:relative; }
+  .cl-tl-item::before { content:''; position:absolute; left:-20px; top:19px; width:10px; height:10px; box-sizing:border-box; border-radius:50%; border:2px solid var(--muted); background:var(--ground); transition:background .2s, border-color .2s; }
+  .cl-tl-item.cur::before { border-color:var(--blue); background:var(--blue); }
+  .cl-tl-btn { display:block; width:100%; min-height:44px; margin:2px 0; padding:8px 10px; border:0; border-radius:10px; background:transparent; color:inherit; font:inherit; text-align:left; cursor:pointer; transition:background .18s; }
+  .cl-tl-btn:hover { background:var(--hover); }
+  .cl-tl-btn:active { background:var(--selected); }
+  .cl-tl-item.cur .cl-tl-btn { background:color-mix(in srgb, var(--blue) 16%, transparent); }
+  .cl-tl-top { display:flex; align-items:baseline; flex-wrap:wrap; gap:2px 8px; min-width:0; }
+  .cl-tl-v { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:15px; font-weight:700; color:var(--text); word-break:break-all; }
+  .cl-tl-item.cur .cl-tl-v { color:var(--link); }
+  .cl-tl-d { font-size:12px; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .cl-tl-s { margin-top:3px; font-size:12.5px; line-height:1.45; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+
+  .cl-open { align-self:flex-start; display:inline-flex; align-items:center; min-height:44px; margin-top:6px; padding:0 2px; color:var(--link); font-size:13px; font-weight:600; text-decoration:underline; text-underline-offset:3px; }
+
+  /* Board: the scrolling body fills what the controls leave; a short tile gets a tighter header */
+  html[data-surface="board"] .cl-full > .cl-scroll { flex:1 1 0; max-height:none; }
+  @container ccb (max-height: 340px) {
+    .cl-head { display:none; }
+    .cl-pickw, .cl-slide { margin-top:8px; }
+    .cl-scroll { margin-top:8px; }
+    .cl-open { margin-top:0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cl-body { animation:none; }
+    * { transition:none !important; }
+  }
+</style>
+<div id="app"></div>
+<script>
+const { html, render, useState, useEffect, useLayoutEffect, useMemo, useRef, useSize, Card, Empty } = ccb.kit;
+
+const str = (v) => ((v === undefined || v === null) ? '' : String(v));
+const safeLink = (v) => {
+  const s = str(v).trim();
+  if (!s) return '';
+  try { const u = new URL(s); return ['http:', 'https:', 'file:'].includes(u.protocol) ? s : ''; } catch (e) { return ''; }
+};
+
+// ---- inline: `code` and **bold**; every piece becomes a text node, nothing is read as HTML ----
+function inlineParts(s) {
+  const out = [];
+  str(s).split(/`([^`]+)`/).forEach((seg, i) => {
+    if (i % 2) { out.push({ k: 'code', t: seg }); return; }
+    seg.split(/\*\*([^*]+)\*\*/).forEach((t, j) => {
+      if (t) out.push({ k: j % 2 ? 'strong' : 'text', t: t });
+    });
+  });
+  return out;
+}
+const plain = (parts) => parts.map((p) => p.t).join('');
+
+// ---- body of one version: "### x" subheading, "- " bullets (indented or lazy continuation lines join the bullet), other lines paragraphs ----
+function parseBody(text) {
+  const blocks = [];
+  let cur = null;
+  let blank = false;
+  for (const raw of str(text).split(/\r?\n/)) {
+    const line = raw.replace(/\s+$/, '');
+    if (!line.trim()) { blank = true; continue; }
+    const h = line.match(/^#{3,6}\s+(.*)$/);
+    if (h) { blocks.push({ type: 'h', text: h[1].trim() }); cur = null; blank = false; continue; }
+    const indented = /^\s/.test(line);
+    const b = !indented && line.match(/^[-*+]\s+(.*)$/);
+    const last = blocks[blocks.length - 1];
+    if (b) { cur = { type: 'li', raw: b[1].trim() }; blocks.push(cur); }
+    else if (cur && (indented || !blank)) cur.raw += ' ' + line.trim();
+    else if (last && last.type === 'p' && !blank) last.raw += ' ' + line.trim();
+    else { cur = null; blocks.push({ type: 'p', raw: line.trim() }); }
+    blank = false;
+  }
+  return blocks.map((b) => {
+    if (b.type === 'h') return b;
+    const parts = inlineParts(b.raw);
+    if (b.type === 'li') return { type: 'li', parts: parts, title: (parts.length && parts[0].k === 'strong') ? parts[0].t : plain(parts) };
+    return { type: 'p', parts: parts };
+  });
+}
+
+// "1.9.0 - 2026-10-20" or "[1.9.0] - 2026-10-20"
+function headOf(head) {
+  let version = '', rest = '';
+  const br = head.match(/^\[([^\]]+)\]\s*(.*)$/);
+  if (br) { version = br[1]; rest = br[2]; }
+  else { const m = head.match(/^(\S+)\s*(.*)$/); if (m) { version = m[1]; rest = m[2]; } }
+  return { version: version.replace(/[:：]$/, '').trim(), date: rest.replace(/^[-–—:：|·]\s*/, '').trim() };
+}
+
+// CHANGELOG text: every "## " line starts a version; lines before the first one are ignored
+function parseChangelog(text) {
+  const sections = [];
+  let cur = null;
+  let fence = false;
+  for (const raw of str(text).split(/\r?\n/)) {
+    if (/^\s*```/.test(raw)) fence = !fence;
+    if (!fence && /^## /.test(raw)) { cur = { head: raw.slice(3).trim(), lines: [] }; sections.push(cur); }
+    else if (cur) cur.lines.push(raw);
+  }
+  return sections
+    .map((s) => { const h = headOf(s.head); return { version: h.version, date: h.date, theme: '', blocks: parseBody(s.lines.join('\n')) }; })
+    .filter((v) => v.version);
+}
+
+// one JSON entry {version, date, theme, body}; a string entry is CHANGELOG text
+function fromEntry(v) {
+  if (typeof v === 'string') return parseChangelog(v);
+  if (!v || typeof v !== 'object') return [];
+  const version = str(v.version).trim();
+  if (!version) return [];
+  return [{ version: version, date: str(v.date).trim(), theme: str(v.theme).trim(), blocks: parseBody(v.body) }];
+}
+
+// data: CHANGELOG text, a JSON string of one, {versions, selected, link}, or an array of versions
+function load(raw) {
+  if (typeof raw === 'string') {
+    const t = raw.trim();
+    if (/^[\[{"]/.test(t)) {
+      let p;
+      try { p = JSON.parse(t); } catch (e) { p = undefined; }
+      if (typeof p === 'string') return { versions: parseChangelog(p), link: '', selected: undefined };
+      if (p && typeof p === 'object') return load(p);
+    }
+    return { versions: parseChangelog(raw), link: '', selected: undefined };
+  }
+  if (Array.isArray(raw)) return { versions: raw.flatMap(fromEntry), link: '', selected: undefined };
+  if (raw && typeof raw === 'object') {
+    const arr = Array.isArray(raw.versions) ? raw.versions : [];
+    return { versions: arr.flatMap(fromEntry), link: safeLink(raw.link), selected: raw.selected };
+  }
+  return { versions: [], link: '', selected: undefined };
+}
+
+// a version with only a theme (no body) shows the theme as its text
+function prepare(raw) {
+  const data = load(raw);
+  const versions = data.versions.map((v) => ({
+    version: v.version, date: v.date, theme: v.theme,
+    blocks: v.blocks.length ? v.blocks : (v.theme ? [{ type: 'p', parts: inlineParts(v.theme) }] : [])
+  }));
+  return { versions: versions, link: data.link, selected: data.selected };
+}
+
+function startIndex(list, selected) {
+  if (typeof selected === 'number' && Number.isInteger(selected) && selected >= 0 && selected < list.length) return selected;
+  if (typeof selected === 'string') {
+    const i = list.findIndex((v) => v.version === selected.trim());
+    if (i >= 0) return i;
+  }
+  return 0;
+}
+
+// ---- size: 1x1 (one), 2x1 (two), anything else = full ----
+const NAME = { small: '1x1', wide: '2x1', tall: '1x2', large: '2x2', xlarge: '4x2' };
+function layoutFor(s) {
+  let k = '';
+  if (s && typeof s === 'object') k = s.name ? (NAME[s.name] || '') : ((s.w && s.h) ? s.w + 'x' + s.h : '');
+  else if (typeof s === 'string') k = s.trim().toLowerCase();
+  if (!k) k = str(document.documentElement.getAttribute('data-size')).trim();
+  return k === '1x1' ? 'one' : k === '2x1' ? 'two' : 'full';
+}
+
+const headline = (v) => {
+  const li = v.blocks.find((b) => b.type === 'li');
+  if (li) return li.title;
+  const p = v.blocks.find((b) => b.type === 'p');
+  return p ? plain(p.parts) : '';
+};
+// the first two entry titles of a version (2x1 rows)
+function firstTitles(v) {
+  let titles = v.blocks.filter((b) => b.type === 'li').map((b) => b.title).filter(Boolean).slice(0, 2);
+  if (!titles.length && headline(v)) titles = [headline(v)];
+  return titles;
+}
+// the line(s) a timeline node shows: the theme, else the first 2 entry titles
+function summaryOf(v) {
+  return v.theme ? [v.theme] : firstTitles(v);
+}
+
+// section heading -> colour class
+function kindOf(t) {
+  const s = str(t).toLowerCase();
+  if (/add/.test(s)) return 'k-add';
+  if (/fix|bug/.test(s)) return 'k-fix';
+  if (/chang|adjust/.test(s)) return 'k-chg';
+  if (/remov|delet|deprec/.test(s)) return 'k-del';
+  return 'k-oth';
+}
+
+function Parts({ parts }) {
+  return parts.map((p, i) => (p.k === 'strong' ? html`<strong key=${i}>${p.t}</strong>`
+    : p.k === 'code' ? html`<code key=${i}>${p.t}</code>` : p.t));
+}
+
+// entry: the first bold text is the title, the rest is the softer description
+function Item({ b }) {
+  const parts = b.parts;
+  if (parts.length && parts[0].k === 'strong') {
+    const desc = parts.slice(1).filter((p) => p.t);
+    if (desc.length && desc[0].k === 'text') desc[0] = { k: 'text', t: desc[0].t.replace(/^\s*[:：\-–—|·]\s*/, '') };
+    const rest = desc.filter((p) => p.t);
+    return html`<li class="cl-it"><div class="cl-it-t">${parts[0].t}</div>${rest.length > 0 && html`<div class="cl-it-d"><${Parts} parts=${rest} /></div>`}</li>`;
+  }
+  return html`<li class="cl-it"><div class="cl-it-t plain"><${Parts} parts=${parts} /></div></li>`;
+}
+
+function groupBlocks(blocks) {
+  const groups = [];
+  let grp = null;
+  let ul = null;
+  const ensure = () => { if (!grp) { grp = { cls: '', head: null, nodes: [] }; groups.push(grp); } return grp; };
+  for (const b of blocks) {
+    if (b.type === 'h') { grp = { cls: kindOf(b.text), head: b.text, nodes: [] }; groups.push(grp); ul = null; }
+    else if (b.type === 'li') {
+      if (!ul) { ul = { t: 'ul', items: [] }; ensure().nodes.push(ul); }
+      ul.items.push(b);
+    } else { ul = null; ensure().nodes.push({ t: 'p', parts: b.parts }); }
+  }
+  return groups;
+}
+
+function Blocks({ blocks }) {
+  const groups = groupBlocks(blocks);
+  if (!groups.length) return html`<div class="cl-none">(No content)</div>`;
+  return groups.map((g, gi) => html`<section key=${gi} class=${'cl-grp ' + g.cls}>
+    ${g.head !== null && html`<div class="cl-pill">${g.head}</div>`}
+    ${g.nodes.map((n, ni) => (n.t === 'ul'
+      ? html`<ul key=${ni} class="cl-items">${n.items.map((b, bi) => html`<${Item} key=${bi} b=${b} />`)}</ul>`
+      : html`<p key=${ni} class="cl-para"><${Parts} parts=${n.parts} /></p>`))}
+  </section>`);
+}
+
+// Overview: every version as a node on a vertical line; a click opens that version in Single
+function Timeline({ versions, sel, onPick }) {
+  return html`<ol class="cl-tl">${versions.map((v, i) => html`<li key=${i} class=${'cl-tl-item' + (i === sel ? ' cur' : '')}>
+    <button type="button" class="cl-tl-btn" aria-label=${v.version + (v.date ? ' ' + v.date : '')} onClick=${() => onPick(i)}>
+      <div class="cl-tl-top"><span class="cl-tl-v">${v.version}</span>${v.date && html`<span class="cl-tl-d">${v.date}</span>`}</div>
+      ${summaryOf(v).map((line, li) => html`<div key=${li} class="cl-tl-s" title=${line}>${line}</div>`)}
+    </button>
+  </li>`)}</ol>`;
+}
+
+function Pick({ versions, sel, onSel, cls }) {
+  return html`<div class=${'cl-sel ' + (cls || '')}>
+    <select class="cl-pick" aria-label="Select version" onChange=${(e) => onSel(Number(e.currentTarget.value) || 0)}>
+      ${versions.map((v, i) => html`<option key=${i} value=${String(i)} selected=${i === sel}>${v.version + (v.date ? ' · ' + v.date : '')}</option>`)}
+    </select>
+    <span class="cl-chev"></span>
+  </div>`;
+}
+
+function One({ versions }) {
+  const v = versions[0];
+  const h = headline(v);
+  return html`<div class="cl cl-one">
+    <div class="cl-lbl">${'Latest version' + (v.date ? ' · ' + v.date : '')}</div>
+    <div class="cl-vnum">${v.version}</div>
+    ${h && html`<div class="cl-t3">${h}</div>`}
+  </div>`;
+}
+
+function Two({ versions, nav, go }) {
+  const titles = firstTitles(versions[nav.sel]);
+  return html`<div class="cl cl-two">
+    <${Pick} versions=${versions} sel=${nav.sel} onSel=${(i) => go({ sel: i })} />
+    <ul class="cl-rows">
+      ${titles.length === 0 && html`<li class="cl-row none">(No entries)</li>`}
+      ${titles.map((t, i) => html`<li key=${i} class="cl-row" title=${t}>${t}</li>`)}
+    </ul>
+  </div>`;
+}
+
+function Full({ p, nav, go }) {
+  const { versions, link } = p;
+  const last = versions.length - 1; // index of the oldest version; versions[0] is the newest
+  const v = versions[nav.sel];
+  const isAll = nav.view === 'all';
+  const scroll = useRef(null);
+  // each selection / view action shows its body from the top (and replays the fade)
+  useLayoutEffect(() => { if (scroll.current) scroll.current.scrollTop = 0; }, [nav.tick]);
+  return html`<div class="cl cl-full">
+    <div class="cl-seg" role="group" aria-label="View mode">
+      <button type="button" class=${'cl-segb' + (!isAll ? ' on' : '')} aria-pressed=${String(!isAll)} onClick=${() => go({ view: 'one' })}>Single</button>
+      <button type="button" class=${'cl-segb' + (isAll ? ' on' : '')} aria-pressed=${String(isAll)} onClick=${() => go({ view: 'all' })}>Overview</button>
+    </div>
+    ${!isAll && html`<div class="cl-head">
+      <div class="cl-vrow"><div class="cl-vnum">${v.version}</div>${v.date && html`<div class="cl-vdate">${v.date}</div>`}</div>
+      ${v.theme && html`<div class="cl-vtheme">${v.theme}</div>`}
+    </div>`}
+    ${!isAll && html`<${Pick} cls="cl-pickw" versions=${versions} sel=${nav.sel} onSel=${(i) => go({ sel: i })} />`}
+    ${!isAll && html`<div class="cl-slide">
+      <div class="cl-ends"><span class="cl-end">${versions[last].version}</span><span class="cl-cur">${v.version}</span><span class="cl-end">${versions[0].version}</span></div>
+      <input class="cl-rng" type="range" min="0" max=${String(last)} step="1" value=${String(last - nav.sel)} disabled=${last < 1}
+        style=${{ '--p': (last ? ((last - nav.sel) / last) * 100 : 100) + '%' }}
+        aria-label="Drag to select a version (newest on the right)"
+        onInput=${(e) => go({ sel: last - (Number(e.currentTarget.value) || 0) })} />
+    </div>`}
+    <div class="cl-scroll" ref=${scroll}>
+      <div class="cl-body" key=${nav.tick}>
+        ${isAll ? html`<${Timeline} versions=${versions} sel=${nav.sel} onPick=${(i) => go({ sel: i, view: 'one' })} />` : html`<${Blocks} blocks=${v.blocks} />`}
+      </div>
+    </div>
+    ${link && html`<a class="cl-open" href=${link} target="_blank" rel="noopener noreferrer">Open full changelog</a>`}
+  </div>`;
+}
+
+function Viewer({ p }) {
+  const size = useSize();
+  const layout = layoutFor(size);
+  // The selected version and the Single / Overview choice live here, above the layout: kept while the
+  // size changes, started again (new key) whenever data arrives. Never saved.
+  const [nav, setNav] = useState(() => ({ sel: startIndex(p.versions, p.selected), view: 'one', tick: 0 }));
+  const go = (patch) => setNav((n) => ({ ...n, ...patch, tick: n.tick + 1 }));
+  if (layout === 'one') return html`<${One} versions=${p.versions} />`;
+  if (layout === 'two') return html`<${Two} versions=${p.versions} nav=${nav} go=${go} />`;
+  return html`<${Full} p=${p} nav=${nav} go=${go} />`;
+}
+
+const readRaw = (d) => (d !== undefined ? d : (window.deck && window.deck.data));
+
+// One count per data event (ccb.onData: "each new data", also a refresh or a re-sent identical value), so
+// the viewer can start over for each one the way the old frame redraw did. useData() is not used: it
+// only redraws when the value changes, and ccb.onData must not be called next to it.
+function useDataEvents() {
+  const [s, setS] = useState(() => ({ raw: readRaw(ccb.data), n: 1 }));
+  useEffect(() => (ccb.onData ? ccb.onData((d) => setS((x) => ({ raw: readRaw(d), n: x.n + 1 }))) : undefined), []);
+  return s;
+}
+
+function Changelog() {
+  const ev = useDataEvents();
+  const p = useMemo(() => prepare(ev.raw), [ev]);
+  return html`<${Card} class="cl-card">${p.versions.length
+    ? html`<${Viewer} key=${ev.n} p=${p} />`
+    : html`<div class="cl"><div class="cl-lbl">Changelog</div><${Empty} title="No data" /></div>`}<//>`;
+}
+
+render(html`<${Changelog} />`, document.getElementById('app'));
+</script>

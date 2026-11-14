@@ -1,0 +1,66 @@
+<style>
+  html,body,#card{margin:0;background:transparent!important}
+  html[data-surface="board"],html[data-surface="board"] body{height:100%}
+  .card{border:0;background:none;border-radius:0;padding:12px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px;min-width:0;color:#EDEDF0;font-family:-apple-system,"PingFang TC",sans-serif}
+  html[data-surface="board"] .card{height:100%}
+  .title{font-size:15px;font-weight:600;line-height:20px;overflow-wrap:anywhere;padding-right:28px}
+  /* Natural height everywhere: the picture sets its own height from the width (no flex-grown or fixed-height boxes). */
+  .pic{display:block;width:100%;margin:0;padding:0;border:0;background:transparent;cursor:zoom-in}
+  .pic:focus-visible{outline:2px solid #4C8DFF;outline-offset:2px}
+  .pic img{display:block;width:100%;height:auto;border:0}
+  html[data-surface="board"] .pic{flex:1 1 0;min-height:0;overflow:hidden}
+  html[data-surface="board"] .pic img{height:100%;object-fit:contain;object-position:left top}
+  .err{display:flex;flex-direction:column;justify-content:center;gap:8px;min-height:80px;color:#A0A0A8;font-size:13px;line-height:18px;overflow-wrap:anywhere}
+  .err .em{white-space:pre-wrap;max-height:9em;overflow:hidden}
+  .err .hint{font-size:12px;opacity:.8}
+  html[data-surface="board"] .err .hint{display:none}
+  .empty{display:flex;align-items:center;justify-content:center;min-height:80px;color:#A0A0A8;font-size:13px;text-align:center;padding:0 12px;overflow-wrap:anywhere}
+  html[data-surface="board"] .card{container-type:normal}
+  @container (max-width:200px){.title{font-size:13px}}
+  @container (max-height:150px){html[data-surface="board"] .title{display:none}}
+</style>
+<div class="card" id="card"></div>
+<script>
+(function(){
+  var card=document.getElementById('card');
+  function el(t,c,x){var e=document.createElement(t);if(c)e.className=c;if(x!==undefined)e.textContent=x;return e}
+  function fileUrl(p){
+    p=String(p||'').trim();
+    if(/^file:\/\//i.test(p))return p;
+    if(p.indexOf('~/')===0)p=(ccb.home||'/Users/'+(ccb.user||''))+p.slice(1);
+    return 'file://'+p.split('/').map(encodeURIComponent).join('/');
+  }
+  function draw(d){
+    d=d&&typeof d==='object'?d:{};
+    if(d.error){
+      card.textContent='';
+      if(d.title)card.appendChild(el('div','title',String(d.title)));
+      var eb=el('div','err');
+      eb.appendChild(el('div','em',String(d.error)));
+      eb.appendChild(el('div','hint','Create script-image.conf from script-image.conf.example (next to run.sh) and set script=/abs/path.'));
+      card.appendChild(eb);
+      try{ccb.setStatus({text:'error',tone:'bad'})}catch(e){}
+      return;
+    }
+    var title=d.title?String(d.title):'';
+    var path=String(d.image||'').trim();
+    card.textContent='';
+    if(title)card.appendChild(el('div','title',title));
+    var src=path?(/^data:image\//.test(path)?path:ccb.image(path)||ccb.image(path.replace(/^file:\/\//,''))):'';
+    if(src){
+      var b=el('div','pic');b.tabIndex=0;b.setAttribute('role','button');b.title='Open full size';b.setAttribute('aria-label','Open full size: '+(title||'image'));
+      var im=document.createElement('img');im.alt=title;im.src=src;
+      im.onerror=function(){b.replaceWith(el('div','empty','Image not found'))};
+      b.appendChild(im);
+      var open=function(){try{ccb.open(fileUrl(path),title||'Image')}catch(e){}};
+      b.onclick=open;
+      b.onkeydown=function(e){if(e.isComposing||e.keyCode===229)return;if(e.key==='Enter'||e.key===' '){e.preventDefault();open()}};
+      card.appendChild(b);
+    }else card.appendChild(el('div','empty',path?'Image not found':'No image'));
+    /* caption and note are accepted but intentionally not drawn: the card shows only title + picture. */
+    try{ccb.setStatus({text:src?'ok':'error',tone:src?'good':'bad'})}catch(e){}
+  }
+  draw(ccb.data);
+  try{ccb.onData(function(d){draw(d)})}catch(e){}
+})();
+</script>

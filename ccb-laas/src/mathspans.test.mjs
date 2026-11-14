@@ -1,0 +1,18 @@
+import { build } from "esbuild";
+import assert from "node:assert/strict";
+const out = process.argv[2];
+await build({ entryPoints: ["src/mathspans.ts"], bundle: true, format: "esm", outfile: out, logLevel: "silent" });
+const { findMathSpans: f } = await import(out);
+const t = (s) => f(s).map((x) => [x.tex, x.display]);
+assert.deepEqual(t("a $x^2$ b"), [["x^2", false]]);
+assert.deepEqual(t("$a$ and $b$"), [["a", false], ["b", false]]);
+assert.deepEqual(t("$$\\frac12$$"), [["\\frac12", true]]);
+assert.deepEqual(t("cost \\$5 and \\$6"), []);
+assert.deepEqual(t("$a\\$b$"), [["a\\$b", false]]);
+assert.deepEqual(t("empty $$ here"), []);
+assert.deepEqual(t("$$$$"), []);
+assert.deepEqual(t("unmatched $x"), []);
+assert.deepEqual(t("$x$ then $y"), [["x", false]]);
+assert.equal(f("ab $x$")[0].from, 3);
+assert.equal(f("ab $x$")[0].to, 6);
+console.log("PASSED");

@@ -1,0 +1,9 @@
+# Copy to script-image.conf (same folder) and edit. Only name scripts you trust.
+# Required: absolute path of your script (executable, or with a shebang).
+script=/Users/me/bin/draw_my_chart.sh
+# Optional: card title (the script may also print {"title","image"}).
+title=My chart
+# Optional: seconds before the script is stopped (default 120).
+timeout=120
+# Optional: absolute directory the script runs in.
+workdir=/Users/me/work

@@ -1,0 +1,13 @@
+# Public hosts that may appear in URLs in this repo (reviewed). A URL to any other host fails the scan.
+# A line also allows its subdomains.
+github.com
+githubusercontent.com
+example.com
+w3.org
+apache.org
+openai.com
+grok.com
+gnu.org
+fsf.org
+mathjax.org
+mhchem.github.io

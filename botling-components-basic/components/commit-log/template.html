@@ -1,0 +1,712 @@
+<meta name="ccb-kit" content="1">
+<style>
+  html, body { margin:0; background:transparent; }
+  html[data-surface="board"], html[data-surface="board"] body, html[data-surface="board"] #app { height:100%; }
+  .cl-card { --ccb-pad:12px; }
+  html[data-surface="board"] .cl-card { height:100%; }
+  .cl, .cl * { box-sizing:border-box; }
+  .cl { --tc:var(--muted); --ts:var(--orange-text); --tn:var(--link); --tk:#C9A0FF; display:flex; flex-direction:column; flex:1; min-width:0; min-height:0; color:var(--text); font:14px/1.4 -apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif; overflow-wrap:anywhere; }
+  html[data-theme="light"] .cl { --tk:#7A3FC4; }
+  .cl > * { flex:none; }
+  .cl [hidden] { display:none !important; }
+  .titlebar { display:flex; flex-wrap:wrap; align-items:baseline; gap:0 8px; padding-right:36px; }
+  .title { font-size:16px; font-weight:600; }
+  .sub { font-size:12px; color:var(--muted); }
+  .empty { margin-top:12px; color:var(--muted); }
+  .find { display:block; width:100%; height:32px; margin-top:8px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--code); color:var(--text); font:inherit; font-size:16px; }
+  .find::placeholder { color:var(--muted); }
+  .find:focus-visible { outline:2px solid var(--blue); outline-offset:-1px; }
+  .scroll { max-height:420px; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; margin-top:4px; padding:12px 6px 4px 0; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  .scroll::-webkit-scrollbar { width:6px; }
+  .scroll::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+  .tl { position:relative; margin:0; padding:0; list-style:none; }
+  .tl::before { content:""; position:absolute; left:5px; top:7px; bottom:7px; border-left:2px dotted var(--border); }
+  .item { position:relative; padding:0 0 12px 22px; }
+  .item:last-child { padding-bottom:0; }
+  .dot { position:absolute; left:0; top:3px; width:12px; height:12px; border-radius:50%; background:var(--blue); box-shadow:0 0 0 3px var(--bubble); }
+  .top { display:flex; flex-wrap:wrap; align-items:flex-start; gap:4px; }
+  .head { flex:1 1 200px; min-width:0; cursor:pointer; border-radius:6px; }
+  .head:focus-visible { outline:2px solid var(--blue); outline-offset:3px; }
+  .meta { display:flex; align-items:center; gap:2px 8px; flex-wrap:wrap; font-size:12px; color:var(--muted); line-height:18px; }
+  .chev { margin-left:auto; font-size:11px; color:var(--muted); }
+  .hash { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; color:var(--link); }
+  .subject { margin-top:2px; font-size:14px; line-height:1.4; word-break:break-word; overflow-wrap:anywhere; }
+  .tag { display:inline-block; margin-right:4px; padding:0 6px; border-radius:6px; background:var(--chip); color:var(--text); font-size:12px; line-height:18px; vertical-align:1px; }
+  .refs { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+  .ref { display:inline-block; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:top; padding:1px 7px; border-radius:6px; background:color-mix(in srgb, var(--blue) 16%, transparent); color:var(--link); font-size:11px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+
+  .detail { display:flex; flex-direction:column; min-width:0; margin-top:6px; border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+  .bar { display:flex; align-items:center; flex-wrap:wrap; gap:0 4px; padding:2px 6px 2px 10px; font-size:12px; color:var(--muted); border-bottom:1px solid var(--border); }
+  .sum { flex:1 1 auto; line-height:18px; padding:6px 0; }
+  .a { color:var(--green); } .d { color:var(--error); }
+  .lk { min-height:32px; padding:0 6px; border:0; border-radius:6px; background:transparent; color:var(--muted); font:inherit; font-size:12px; cursor:pointer; }
+  .lk:hover, .lk:focus-visible, .lk.on { color:var(--link); }
+  .lk:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; }
+  .flist { flex:0 1 auto; min-height:44px; max-height:148px; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; padding:3px 0; border-bottom:1px solid var(--border); scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+  .frow { box-shadow:inset 2px 0 0 transparent; }
+  .frow.sel { box-shadow:inset 2px 0 0 var(--blue); font-weight:600; }
+  .tk-c { color:var(--tc); font-style:italic; } .tk-s { color:var(--ts); } .tk-n { color:var(--tn); } .tk-k { color:var(--tk); }
+  .frow { display:flex; align-items:center; gap:8px; width:100%; min-height:28px; padding:0 10px; border:0; background:transparent; color:var(--text); font:inherit; font-size:12px; text-align:left; cursor:pointer; }
+  .frow:hover { background:var(--hover); }
+  .frow:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; }
+  .frow.sel { background:var(--hover); color:var(--link); }
+  .st { flex:none; width:16px; text-align:center; font-size:11px; font-weight:600; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; color:var(--muted); }
+  .st.A { color:var(--green); } .st.D { color:var(--error); } .st.R { color:var(--link); }
+  .fn { flex:none; font-size:11px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; }
+  .dbody { flex:1 1 auto; min-height:0; max-height:380px; overflow:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; scrollbar-width:thin; scrollbar-color:var(--border) transparent; background:var(--code); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:18px; color:var(--text); }
+  .fgrid { width:max-content; min-width:100%; }
+  .ln { display:flex; padding-right:10px; white-space:pre; }
+  .ln.add { background:color-mix(in srgb, var(--green) 16%, transparent); } .ln.add .sg { color:var(--green); }
+  .ln.del { background:color-mix(in srgb, var(--error) 16%, transparent); } .ln.del .sg { color:var(--error); }
+  .ln.hunk { color:var(--link); }
+  .ln.note { color:var(--muted); font-style:italic; }
+  .no { flex:none; width:34px; padding-right:6px; text-align:right; color:var(--muted); opacity:.7; user-select:none; }
+  .sg { flex:none; width:12px; user-select:none; }
+  .cd { flex:0 0 auto; white-space:pre; }
+  .sp { display:grid; grid-template-columns:34px minmax(150px,auto) 34px minmax(150px,auto); width:max-content; min-width:100%; }
+  .sp .c { padding:0 6px; white-space:pre; }
+  .more { display:block; margin:6px auto; min-height:44px; padding:0 16px; border:1px solid var(--border); border-radius:8px; background:transparent; color:var(--link); font:inherit; font-size:12px; cursor:pointer; position:sticky; left:0; }
+  .more:hover, .more:focus-visible { background:var(--hover); }
+  .fmore { padding:4px 10px; font-size:11px; color:var(--muted); }
+  .sp .c.add { background:color-mix(in srgb, var(--green) 16%, transparent); }
+  .sp .c.del { background:color-mix(in srgb, var(--error) 16%, transparent); }
+  .sp .c.gap { background:var(--hover); }
+  .sp .no.add { background:color-mix(in srgb, var(--green) 16%, transparent); } .sp .no.del { background:color-mix(in srgb, var(--error) 16%, transparent); }
+  .sp .hk { grid-column:1 / -1; padding:0 10px; color:var(--link); white-space:pre; }
+  .sp .nt { grid-column:1 / -1; padding:0 10px; color:var(--muted); font-style:italic; }
+  .nodiff { padding:10px; font-size:12px; color:var(--muted); line-height:18px; }
+  .dload { padding:10px; font-size:12px; color:var(--muted); line-height:18px; overflow-wrap:anywhere; }
+  .dload.err { color:var(--error); }
+  .trunc { padding:6px 10px; font-size:12px; color:var(--error); border-top:1px solid var(--border); }
+  .rawline { margin-top:6px; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:12px; line-height:18px; color:var(--muted); word-break:break-all; }
+
+  /* compact lists: 2x1 (latest two) and 1x2 (all, scrolling) */
+  .cl-lines { margin:4px 0 0; padding:0; list-style:none; min-width:0; }
+  .cline { display:flex; flex-wrap:wrap; align-items:baseline; gap:0 8px; min-width:0; padding:6px 0; font-size:13px; line-height:1.4; border-bottom:1px solid var(--hover); }
+  .cline:last-child { border-bottom:0; }
+  .cline .hash { flex:none; }
+  .cline .csub { flex:1 1 150px; min-width:0; color:var(--text); overflow-wrap:anywhere; word-break:break-word; }
+  .cline.one { flex-wrap:nowrap; }
+  .cline.one .csub { flex:1 1 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; overflow-wrap:normal; word-break:normal; }
+  .cscroll { max-height:420px; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; margin-top:6px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+
+  /* one cell: the newest commit only */
+  .s1 { display:flex; flex-direction:column; justify-content:center; gap:4px; min-width:0; flex:1 1 0; min-height:0; }
+  .s1top { padding-right:24px; }
+  .s1top .hash { font-size:13px; white-space:nowrap; }
+  .s1sub { font-size:12px; color:var(--muted); }
+  .s1msg { font-size:13px; line-height:1.35; color:var(--text); display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
+
+  /* wide: list on the left, selected diff on the right */
+  .wgrid { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,3fr); grid-template-rows:minmax(0,1fr); gap:12px; align-items:stretch; height:480px; margin-top:4px; }
+  .wcol { display:flex; flex-direction:column; min-width:0; min-height:0; }
+  .wcol .find { margin-top:0; }
+  .wcol .scroll { flex:1 1 0; min-height:0; margin-top:8px; max-height:none; }
+  .wpane { display:flex; flex-direction:column; min-width:0; min-height:0; }
+  .wpane .pbody { flex:1 1 0; min-height:0; display:flex; flex-direction:column; }
+  .wgrid.narrow { grid-template-columns:68px minmax(0,1fr); gap:8px; }
+  .wgrid.narrow .wtog { width:100%; height:28px; font-size:16px; border-radius:7px; }
+  .wctl { display:flex; align-items:center; gap:8px; min-width:0; }
+  .wctl .find { flex:1 1 auto; width:auto; min-width:0; margin:0; }
+  .wtog { flex:none; width:36px; height:36px; padding:0; border:1px solid var(--border); border-radius:8px; background:var(--code); color:var(--muted); font:inherit; font-size:18px; line-height:1; cursor:pointer; transition:color .15s, border-color .15s, background .15s, transform .1s; }
+  .wtog:hover, .wtog:focus-visible { color:var(--link); border-color:var(--blue); }
+  .wtog:active { transform:scale(.94); }
+  .wtog:focus-visible { outline:2px solid var(--blue); outline-offset:1px; }
+  .nscroll { flex:1 1 0; min-height:0; margin-top:6px; overflow-x:hidden; overflow-y:auto; overscroll-behavior:contain; display:flex; flex-direction:column; gap:2px; scrollbar-width:none; }
+  .nscroll::-webkit-scrollbar { display:none; }
+  .nrow { flex:none; display:block; width:100%; min-height:40px; padding:4px 0; border:0; border-radius:7px; background:transparent; color:var(--text); font:inherit; text-align:center; cursor:pointer; box-shadow:inset 2px 0 0 transparent; transition:background .15s; }
+  .nrow .hash { font-size:10.5px; letter-spacing:-.2px; }
+  .nrow:hover { background:var(--hover); }
+  .nrow:active { background:var(--selected); }
+  .nrow:focus-visible { outline:2px solid var(--blue); outline-offset:-2px; }
+  .nrow.sel { background:var(--hover); box-shadow:inset 2px 0 0 var(--blue); }
+  .nl1 { display:block; line-height:14px; }
+  .nd { display:block; font-size:10px; line-height:13px; color:var(--muted); white-space:nowrap; }
+  .nrow.sel .nd { color:var(--link); }
+  .phead { flex:none; min-width:0; padding:0 0 4px; }
+  .pl1 { display:flex; align-items:baseline; gap:8px; min-width:0; font-size:13px; line-height:18px; }
+  .pl1 .hash { flex:none; }
+  .psub { flex:1 1 0; min-width:0; color:var(--text); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .pmeta { min-width:0; font-size:11px; line-height:15px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .wpane .detail { flex:1 1 0; min-height:0; margin-top:0; }
+  .wpane .dbody { flex:1 1 0; min-height:0; max-height:none; }
+  .wpane .flist { flex:0 0 auto; min-height:0; max-height:96px; }
+  .wpane .bar { flex:none; flex-wrap:nowrap; padding:0 4px 0 10px; }
+  .wpane .sum { min-width:0; padding:4px 0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .wpane .lk { flex:none; min-height:28px; padding:0 5px; }
+  .wpane .dload, .wpane .nodiff { flex:none; }
+  /* file paths: dimmed dir (cut from the left), emphasised basename */
+  .fp { flex:1 1 auto; min-width:0; display:flex; direction:ltr; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; text-align:left; overflow:hidden; white-space:nowrap; }
+  .fdir { flex:0 1 auto; min-width:0; direction:rtl; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--muted); font-weight:400; }
+  .fdir bdi { unicode-bidi:isolate; }
+  .fbase { flex:0 1 auto; min-width:0; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+  .item.sel .subject { color:var(--link); }
+  .item.sel .dot { box-shadow:0 0 0 3px var(--bubble), 0 0 0 5px var(--blue); }
+
+  /* Board: the tile is the frame; lists and the diff fill the height */
+  html[data-surface="board"] .cl { height:100%; }
+  html[data-surface="board"] .cl > .scroll, html[data-surface="board"] .cl > .cscroll { flex:1 1 0; min-height:0; max-height:none; }
+  html[data-surface="board"] .cl > .wgrid { flex:1 1 0; height:auto; min-height:0; }
+  html[data-surface="board"] .wpane .flist { max-height:min(96px, 34%); }
+</style>
+<div id="app"></div>
+<script>
+const { html, render, useState, useEffect, useMemo, useRef, useSize, useSurface, Card } = ccb.kit;
+
+// ---- input: a JSON array, {"commits":[…]}, or the text of `git log` lines ----
+const toText = (v) => (v === undefined || v === null) ? '' : String(v);
+const toLines = (v) => Array.isArray(v) ? v.map(toText).map((s) => s.trim()).filter(Boolean)
+  : (typeof v === 'string' ? v.split(/\r?\n/).map((s) => s.trim()).filter(Boolean) : []);
+const toNum = (v) => { const n = Number(v); return Number.isFinite(n) && v !== '' && v !== null && v !== undefined ? n : null; };
+// files: array of strings or of {path,status,added,deleted}
+const toFiles = (v) => {
+  const arr = Array.isArray(v) ? v : (typeof v === 'string' ? v.split(/\r?\n/) : []);
+  const out = [];
+  for (const f of arr) {
+    if (f && typeof f === 'object') {
+      const path = toText(f.path || f.file || f.name).trim();
+      if (path) out.push({ path, status: toText(f.status).trim().charAt(0).toUpperCase(), added: toNum(f.added), deleted: toNum(f.deleted) });
+    } else {
+      const path = toText(f).trim();
+      if (path) out.push({ path, status: '', added: null, deleted: null });
+    }
+  }
+  return out;
+};
+const normDiff = (v) => toText(v).replace(/\r\n?/g, '\n').replace(/\n+$/, '');
+
+// command output: hash|author|date|refs|subject (five columns, %D in 4th)
+// or the older hash|author|date|subject (four columns)
+const REFS_LIKE = /HEAD ->|tag:|origin\//;
+const parseLine = (line) => {
+  const parts = line.split('|');
+  if (parts.length < 4) return null;
+  const hash = parts[0].trim();
+  const author = parts[1].trim();
+  const date = parts[2].trim();
+  const fourth = parts[3].trim();
+  let refs = [];
+  let subject;
+  const refItems = fourth.split(',').map((s) => s.trim());
+  const plainRefs = fourth !== '' && refItems.every((s) => s !== '' && !/\s/.test(s));
+  if (parts.length >= 5 && (fourth === '' || REFS_LIKE.test(fourth) || plainRefs)) {
+    refs = fourth.split(/\s*,\s*/).map((s) => s.trim()).filter(Boolean);
+    subject = parts.slice(4).join('|').trim();
+  } else {
+    subject = parts.slice(3).join('|').trim();
+  }
+  if (!hash && !subject) return null;
+  return { hash, author, date, subject, refs, files: [], diff: '', truncated: false };
+};
+
+function parseData(input) {
+  let raw = input;
+  // Command output may arrive as a JSON string
+  if (typeof raw === 'string' && /^\s*[\[{]/.test(raw)) {
+    try { raw = JSON.parse(raw); } catch (e) { /* keep as text */ }
+  }
+  let list = [];
+  let errorLine = '';
+  if (typeof raw === 'string') {
+    list = raw.split(/\r?\n/).filter((l) => l.trim()).map(parseLine).filter(Boolean);
+    if (!list.length) errorLine = toLines(raw)[0] || '';
+  } else {
+    const arr = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.commits) ? raw.commits : []);
+    list = arr.filter((r) => r && typeof r === 'object').map((r) => ({
+      hash: toText(r.hash).trim(),
+      subject: toText(r.subject).trim(),
+      author: toText(r.author).trim(),
+      date: toText(r.date).trim(),
+      refs: Array.isArray(r.refs) ? r.refs.map(toText).filter(Boolean) : [],
+      files: toFiles(r.files),
+      diff: normDiff(r.diff),
+      truncated: r.truncated === true
+    }));
+  }
+  return { list, errorLine };
+}
+
+// ---- diff on demand: ccb.runDetail({hash}) resolves to that commit's diff text ----
+// a successful result is cached per hash; a failure is not cached, so expanding again retries
+const canRunDetail = () => typeof ccb.runDetail === 'function';
+const fetchDetail = (S, hash) => {
+  if (S.cache.has(hash)) return Promise.resolve(S.cache.get(hash));
+  if (S.pending.has(hash)) return S.pending.get(hash);
+  const p = Promise.resolve()
+    .then(() => ccb.runDetail({ hash }))
+    .then((out) => {
+      const text = typeof out === 'string' ? out : toText(out);
+      S.cache.set(hash, text);
+      return text;
+    })
+    .catch((err) => {
+      const msg = (err && err.message) ? err.message : String(err);
+      throw new Error(/1000 KB/.test(msg) ? 'diff too large to load' : msg);
+    })
+    .finally(() => S.pending.delete(hash));
+  S.pending.set(hash, p);
+  return p;
+};
+const errText = (err) => (err && err.message) ? err.message : String(err);
+
+// ---- diff parsing: text -> [{path, status, added, deleted, rows}] ----
+const parseDiff = (text) => {
+  const blocks = [];
+  let cur = null;
+  let o = 0, n = 0, inHunk = false, pc = 1; // pc: number of parents (combined diff of a merge has 2+ marker columns)
+  const start = (path) => { cur = { path, status: '', added: 0, deleted: 0, rows: [], raw: [] }; blocks.push(cur); inHunk = false; };
+  for (let line of text.split('\n')) {
+    if (line.length > 1000) line = line.slice(0, 1000) + '…';
+    const m = line.match(/^diff --git a\/(.*) b\/(.*)$/);
+    if (m) { start(m[2]); cur.raw.push(line); continue; }
+    const mc = line.match(/^diff --(?:cc|combined) (.*)$/);
+    if (mc) { start(mc[1]); cur.raw.push(line); continue; }
+    // the header and --stat block before the first diff --git belong to no file
+    if (!cur) { if (!line.startsWith('@@')) continue; start(''); }
+    cur.raw.push(line);
+    if (line.startsWith('@@')) {
+      const h = line.match(/^(@@+) -(\d+)(?:,\d+)?(?: -\d+(?:,\d+)?)* \+(\d+)/);
+      o = h ? +h[2] : 0; n = h ? +h[3] : 0; inHunk = true;
+      pc = h ? h[1].length - 1 : 1;
+      cur.rows.push({ t: 'hunk', x: line });
+      continue;
+    }
+    if (!inHunk) {
+      if (line.startsWith('new file')) cur.status = 'A';
+      else if (line.startsWith('deleted file')) cur.status = 'D';
+      else if (line.startsWith('rename ') || line.startsWith('similarity ')) cur.status = cur.status || 'R';
+      else if (/^Binary files|^GIT binary patch/.test(line)) cur.rows.push({ t: 'note', x: 'Binary file' });
+      continue;
+    }
+    if (line.startsWith('\\')) { cur.rows.push({ t: 'note', x: line }); continue; }
+    // strip the marker column(s) (one per parent) so the sign shows only once, in the gutter
+    const mk = line.slice(0, pc), x = line.slice(pc);
+    if (mk.includes('+')) { cur.rows.push({ t: 'add', n: n++, x }); cur.added++; }
+    else if (mk.includes('-')) { cur.rows.push({ t: 'del', o: mk[0] === '-' ? o++ : undefined, x }); cur.deleted++; }
+    else cur.rows.push({ t: 'ctx', o: o++, n: n++, x });
+  }
+  for (const b of blocks) {
+    if (!b.status) b.status = 'M';
+    b.raw = b.raw.join('\n');
+  }
+  return blocks;
+};
+
+// merge metadata files with diff blocks
+const buildEntries = (c) => {
+  const blocks = c.diff ? parseDiff(c.diff) : [];
+  const used = new Set();
+  const entries = [];
+  for (const f of c.files) {
+    const key = f.path.includes(' => ') ? f.path.split(' => ').pop().replace(/[{}]/g, '') : f.path;
+    const bi = blocks.findIndex((b, i) => !used.has(i) && b.path && (b.path === f.path || b.path === key || f.path.endsWith('/' + b.path) || b.path.endsWith('/' + key)));
+    const b = bi >= 0 ? blocks[bi] : null;
+    if (bi >= 0) used.add(bi);
+    entries.push({
+      path: f.path,
+      status: f.status || (b ? b.status : ''),
+      added: f.added !== null ? f.added : (b ? b.added : null),
+      deleted: f.deleted !== null ? f.deleted : (b ? b.deleted : null),
+      rows: b ? b.rows : null,
+      raw: b ? b.raw : ''
+    });
+  }
+  blocks.forEach((b, i) => {
+    if (!used.has(i)) entries.push({ path: b.path || '(diff)', status: b.status, added: b.added, deleted: b.deleted, rows: b.rows, raw: b.raw });
+  });
+  return entries;
+};
+
+const STATUS_TIP = { A: 'Added', M: 'Modified', D: 'Deleted', R: 'Renamed' };
+const copyText = async (text) => {
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(text); return true; }
+  } catch (e) { /* fall through */ }
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.append(ta); ta.select();
+    const ok = document.execCommand('copy');
+    ta.remove();
+    return ok;
+  } catch (e) { return false; }
+};
+
+// ---- tiny syntax highlighter (per line, by file extension) ----
+const KW = {
+  js: 'const let var function return if else for while do switch case break continue new class extends import export from default async await try catch finally throw typeof instanceof in of this super static get set yield null undefined true false void delete interface type enum implements public private protected readonly as',
+  c: 'if else for while do switch case break continue return struct class enum union typedef static const void int char float double long short unsigned signed bool true false nil null new delete this self import include using namespace public private protected extends implements interface abstract final override func let var guard defer init deinit protocol extension where in is as try catch throw throws async await fn pub mut impl use mod match loop package go chan map range fun val when object',
+  py: 'def class return if elif else for while in not and or is import from as with try except finally raise lambda pass break continue yield None True False global nonlocal async await del assert self',
+  sh: 'if then else elif fi for while until do done case esac in function return exit local export echo set unset source true false',
+  rb: 'def end class module if elsif else unless while until for in do begin rescue ensure return yield require nil true false self then case when',
+  json: 'true false null',
+  yml: 'true false null yes no'
+};
+const LANG = {};
+const defLang = (exts, o) => { for (const e of exts.split(' ')) LANG[e] = o; };
+const SLASH = '\\/\\/.*|\\/\\*.*?(?:\\*\\/|$)|^\\s*\\*(?!\\/).*$';
+const STR = '"(?:[^"\\\\]|\\\\.)*"?|\'(?:[^\'\\\\]|\\\\.)*\'?';
+defLang('js jsx ts tsx mjs cjs', { com: SLASH, str: STR + '|`(?:[^`\\\\]|\\\\.)*`?', kw: KW.js });
+defLang('json jsonc', { com: SLASH, str: '"(?:[^"\\\\]|\\\\.)*"?', kw: KW.json });
+defLang('swift java kt kts go rs c h cc cpp hpp m mm cs dart scala php', { com: SLASH, str: STR + '|`(?:[^`\\\\]|\\\\.)*`?', kw: KW.c });
+defLang('py', { com: '#.*', str: '"""?(?:[^"\\\\]|\\\\.)*"?"?"?|\'(?:[^\'\\\\]|\\\\.)*\'?', kw: KW.py });
+defLang('sh bash zsh', { com: '#.*', str: STR, kw: KW.sh });
+defLang('rb', { com: '#.*', str: STR, kw: KW.rb });
+defLang('yml yaml toml ini conf', { com: '#.*', str: STR, kw: KW.yml });
+defLang('css scss less', { com: '\\/\\*.*?(?:\\*\\/|$)|\\/\\/.*|^\\s*\\*(?!\\/).*$', str: STR, kw: '', extra: '@[\\w-]+|--[\\w-]+', unit: true });
+defLang('html htm xml svg vue', { com: '<!--.*?(?:-->|$)', str: STR, kw: '', extra: '<\\/?[A-Za-z][\\w:-]*|\\/?>' });
+defLang('md markdown', { com: '', str: '`[^`]*`?', kw: '', extra: '^\\s*(?:#{1,6}\\s|[-*+]\\s|\\d+\\.\\s)|\\*\\*[^*]+\\*\\*', nonum: true });
+const hlCache = new Map();
+const hlRe = (ext) => {
+  if (hlCache.has(ext)) return hlCache.get(ext);
+  const L = LANG[ext];
+  let re = null;
+  if (L) {
+    const kwSrc = L.kw ? '\\b(?:' + L.kw.split(' ').join('|') + ')\\b' : (L.extra || '(?!)');
+    const kwAll = L.kw && L.extra ? kwSrc + '|' + L.extra : kwSrc;
+    const num = L.nonum ? '(?!)' : (L.unit ? '#[0-9a-fA-F]{3,8}\\b|-?\\b\\d+(?:\\.\\d+)?(?:px|em|rem|%|vh|vw|s|ms|deg|fr)?' : '\\b0x[0-9a-fA-F]+\\b|\\b\\d+(?:\\.\\d+)?\\b');
+    re = new RegExp('(' + (L.com || '(?!)') + ')|(' + L.str + ')|(' + num + ')|(' + kwAll + ')', 'g');
+  }
+  hlCache.set(ext, re);
+  return re;
+};
+const extOf = (path) => {
+  const base = String(path).split('/').pop().toLowerCase();
+  if (base === 'makefile' || base === 'dockerfile') return 'sh';
+  const i = base.lastIndexOf('.');
+  return i >= 0 ? base.slice(i + 1) : '';
+};
+const TKC = [null, 'tk-c', 'tk-s', 'tk-n', 'tk-k'];
+// the children of one code line, highlighted when the language is known
+const codeNodes = (text, ext) => {
+  const re = text.length < 600 ? hlRe(ext) : null;
+  if (!re) return [text === '' ? ' ' : text];
+  re.lastIndex = 0;
+  const out = [];
+  let last = 0, m;
+  while ((m = re.exec(text))) {
+    if (m[0] === '') { re.lastIndex++; continue; }
+    if (m.index > last) out.push(text.slice(last, m.index));
+    let g = 1; while (g < 5 && m[g] === undefined) g++;
+    out.push(html`<span class=${TKC[g]}>${m[0]}</span>`);
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  if (text === '') out.push(' ');
+  return out;
+};
+
+const lnUnified = (r, ext, k) => {
+  if (r.t === 'hunk') return html`<div class="ln hunk" key=${k}>${r.x}</div>`;
+  if (r.t === 'note') return html`<div class="ln note" key=${k}>${r.x}</div>`;
+  return html`<div class=${'ln ' + r.t} key=${k}><span class="no">${r.o !== undefined ? String(r.o) : ''}</span><span class="no">${r.n !== undefined ? String(r.n) : ''}</span><span class="sg">${r.t === 'add' ? '+' : r.t === 'del' ? '−' : ''}</span><span class="cd">${codeNodes(r.x, ext)}</span></div>`;
+};
+
+const renderUnified = (rows, ext) => html`<div class="fgrid">${rows.map((r, i) => lnUnified(r, ext, i))}</div>`;
+
+const renderSplit = (rows, ext) => {
+  const cells = [];
+  let k = 0;
+  const cell = (cls, text) => cells.push(html`<span class=${'c ' + cls} key=${k++}>${text !== '' ? codeNodes(text === ' ' ? '' : text, ext) : null}</span>`);
+  const num = (cls, v) => cells.push(html`<span class=${'no ' + cls} key=${k++}>${v === undefined ? '' : String(v)}</span>`);
+  let dels = [], adds = [];
+  const flush = () => {
+    const n = Math.max(dels.length, adds.length);
+    for (let i = 0; i < n; i++) {
+      const l = dels[i], r = adds[i];
+      num(l ? 'del' : '', l ? l.o : undefined); cell(l ? 'del' : 'gap', l ? (l.x || ' ') : '');
+      num(r ? 'add' : '', r ? r.n : undefined); cell(r ? 'add' : 'gap', r ? (r.x || ' ') : '');
+    }
+    dels = []; adds = [];
+  };
+  for (const r of rows) {
+    if (r.t === 'del') { if (adds.length) flush(); dels.push(r); continue; }
+    if (r.t === 'add') { adds.push(r); continue; }
+    flush();
+    if (r.t === 'hunk') cells.push(html`<span class="hk" key=${k++}>${r.x}</span>`);
+    else if (r.t === 'note') cells.push(html`<span class="nt" key=${k++}>${r.x}</span>`);
+    else { num('', r.o); cell('', r.x || ' '); num('', r.n); cell('', r.x || ' '); }
+  }
+  flush();
+  return html`<div class="sp">${cells}</div>`;
+};
+
+function PathEl({ path }) {
+  const i = path.lastIndexOf('/');
+  return html`<span class="fp" title=${path}>${i > 0 && html`<span class="fdir"><bdi>${path.slice(0, i + 1)}</bdi></span>`}<span class="fbase">${i >= 0 ? path.slice(i + 1) : path}</span></span>`;
+}
+function Stat({ a, d }) {
+  return html`<span class="fn">${a ? html`<span class="a">${'+' + a}</span>` : null}${a && d ? ' ' : null}${d ? html`<span class="d">${'−' + d}</span>` : null}</span>`;
+}
+
+// the file list + diff of one commit; its view state (mode, selected file, shown lines) lives on c.ent
+const NO_DIFF = 'This commit has no diff to display (possibly a merge commit)';
+const LIST_CAP = 300, ROW_STEP = 1500;
+function Detail({ c }) {
+  const [, force] = useState(0);
+  const upd = () => force((n) => n + 1);
+  if (!c.ent || c.ent.diff !== c.diff) {
+    const entries = buildEntries(c);
+    c.ent = { diff: c.diff, entries, mode: 'unified', sel: entries.findIndex((e) => e.rows), limits: {} };
+  }
+  const E = c.ent;
+  const entries = E.entries;
+  const flistRef = useRef(null);
+  const bodyRef = useRef(null);
+  const copyRef = useRef({ label: 'Copy diff', t: 0 });
+  const prevSel = useRef(E.sel);
+  useEffect(() => () => clearTimeout(copyRef.current.t), []);
+  useEffect(() => {
+    if (prevSel.current !== E.sel) {
+      prevSel.current = E.sel;
+      const b = bodyRef.current;
+      if (b) { b.scrollTop = 0; b.scrollLeft = 0; }
+    }
+    // keep the selected file visible in the file list
+    requestAnimationFrame(() => {
+      const fl = flistRef.current, sb = fl && fl.querySelector('.frow.sel');
+      if (!sb || !sb.isConnected) return;
+      const fr = fl.getBoundingClientRect(), br = sb.getBoundingClientRect();
+      if (br.top < fr.top) fl.scrollTop -= fr.top - br.top;
+      else if (br.bottom > fr.bottom) fl.scrollTop += br.bottom - fr.bottom;
+    });
+  });
+
+  const loaded = !!c.loaded;
+  if (!entries.length) return html`<div class="detail"><div class="nodiff">${loaded ? NO_DIFF : 'No diff content'}</div></div>`;
+
+  const hasRows = entries.some((e) => e.rows);
+  const sumA = entries.reduce((s, e) => s + (e.added || 0), 0);
+  const sumD = entries.reduce((s, e) => s + (e.deleted || 0), 0);
+  const sel = E.sel >= 0 ? entries[E.sel] : null;
+  const copy = async () => {
+    const ok = await copyText(sel ? (sel.raw || '') : '');
+    clearTimeout(copyRef.current.t);
+    copyRef.current.label = ok ? 'Copied' : 'Copy failed';
+    upd();
+    copyRef.current.t = setTimeout(() => { copyRef.current.label = 'Copy diff'; upd(); }, 1500);
+  };
+
+  let body;
+  if (sel && sel.rows) {
+    const ext = extOf(sel.path);
+    const lim = E.limits[E.sel] || ROW_STEP;
+    const part = sel.rows.length > lim ? sel.rows.slice(0, lim) : sel.rows;
+    body = html`${E.mode === 'split' ? renderSplit(part, ext) : renderUnified(part, ext)}${sel.rows.length > lim && html`<button type="button" class="more" onClick=${() => { E.limits[E.sel] = lim + ROW_STEP; upd(); }}>${'Show more (' + (sel.rows.length - lim) + ' more lines)'}</button>`}`;
+  } else {
+    body = html`<div class="nodiff">${loaded && !hasRows ? NO_DIFF : 'No diff to display'}</div>`;
+  }
+
+  return html`<div class="detail">
+    <div class="bar">
+      <span class="sum">${entries.length + (entries.length === 1 ? ' file ' : ' files ')}<span class="a">${'+' + sumA}</span>${' '}<span class="d">${'−' + sumD}</span></span>
+      ${hasRows && html`<button type="button" class=${'lk' + (E.mode === 'unified' ? ' on' : '')} onClick=${() => { E.mode = 'unified'; upd(); }}>Unified</button>`}
+      ${hasRows && html`<button type="button" class=${'lk' + (E.mode === 'split' ? ' on' : '')} onClick=${() => { E.mode = 'split'; upd(); }}>Split</button>`}
+      ${hasRows && html`<button type="button" class="lk" onClick=${copy}>${copyRef.current.label}</button>`}
+    </div>
+    <div class="flist" ref=${flistRef}>
+      ${entries.slice(0, LIST_CAP).map((e, i) => html`<button type="button" key=${i} class=${'frow' + (E.sel === i ? ' sel' : '')} style=${e.rows ? null : 'cursor:default'} aria-pressed=${e.rows ? String(E.sel === i) : null} onClick=${e.rows ? () => { if (E.sel !== i) { E.sel = i; upd(); } } : null}>
+        <span class=${'st' + (e.status ? ' ' + e.status : '')} title=${STATUS_TIP[e.status] || null}>${e.status || '·'}</span>
+        <${PathEl} path=${e.path} />
+        <${Stat} a=${e.added} d=${e.deleted} />
+      </button>`)}
+      ${entries.length > LIST_CAP && html`<div class="fmore">${(entries.length - LIST_CAP) + ' more files'}</div>`}
+    </div>
+    <div class="dbody" ref=${bodyRef} hidden=${!hasRows && !loaded}>${body}</div>
+    ${c.truncated && html`<div class="trunc">diff truncated (too long)</div>`}
+  </div>`;
+}
+
+// the diff area of a row (full layout): loaded on expand when the row has files but no diff
+function RowBody({ c }) {
+  if (c.diff) return html`<${Detail} c=${c} />`;
+  if (c.loading) return html`<div class="dload">Loading…</div>`;
+  if (c.loadErr) return html`<div class="dload err">${'Failed to load: ' + c.loadErr}</div><div class="dload">Collapse and expand again to retry.</div>`;
+  return html`<${Detail} c=${c} />`;
+}
+
+function Subject({ text }) {
+  const pm = text.match(/^([^:]{1,24}): /);
+  return pm ? html`<span class="tag">${pm[1]}</span>${text.slice(pm[0].length)}` : text;
+}
+
+const activate = (fn) => (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); fn(); } };
+
+// one commit row. wide: the header only selects the row, the diff lives in the right pane
+function Row({ S, c, wide, selected, hidden, onPick }) {
+  const expandable = !wide && ((c.files && c.files.length > 0) || !!c.diff);
+  const toggle = () => {
+    c.open = !c.open;
+    if (c.open && !c.diff && c.hash && canRunDetail()) {
+      if (!c.loading) {
+        c.loading = true; c.loadErr = '';
+        fetchDetail(S, c.hash)
+          .then((t) => { c.diff = normDiff(t); c.loaded = true; })
+          .catch((err) => { c.loadErr = errText(err); })
+          .then(() => { c.loading = false; S.touch(); });
+      }
+    }
+    S.touch();
+  };
+  const act = wide ? () => onPick(c) : expandable ? toggle : null;
+  const open = !wide && !!c.open;
+  return html`<li class=${'item' + (wide && selected ? ' sel' : '')} hidden=${hidden}>
+    <span class="dot"></span>
+    <div class="top">
+      <div class="head" style=${act ? null : 'cursor:default'} role=${act ? 'button' : null} tabindex=${act ? '0' : null}
+        aria-pressed=${wide ? String(selected) : null} aria-expanded=${expandable ? String(open) : null}
+        onClick=${act} onKeyDown=${act ? activate(act) : null}>
+        <div class="meta">
+          ${c.hash && html`<span class="hash">${c.hash}</span>`}
+          ${c.author && html`<span>${c.author}</span>`}
+          ${c.date && html`<span>${c.date}</span>`}
+          ${expandable && html`<span class="chev">${open ? '▾' : '▸'}</span>`}
+        </div>
+        <div class="subject"><${Subject} text=${c.subject} /></div>
+        ${c.refs.length > 0 && html`<div class="refs">${c.refs.map((r, i) => html`<span class="ref" key=${i} title=${r}>${r}</span>`)}</div>`}
+      </div>
+    </div>
+    ${open && html`<div><${RowBody} c=${c} /></div>`}
+  </li>`;
+}
+
+// hash + subject only (one cell wide or one row tall): no expand
+function Line({ c, one }) {
+  return html`<li class=${'cline' + (one ? ' one' : '')}>${c.hash && html`<span class="hash">${c.hash}</span>`}<span class="csub" title=${c.subject}>${c.subject}</span></li>`;
+}
+
+// wide, right pane: the selected commit's header and diff. Remounted by a pick, so picking a row again retries.
+function PaneBody({ S, c }) {
+  const needs = !c.diff && !!c.hash && canRunDetail();
+  const [st, setSt] = useState(needs ? { k: 'load' } : { k: 'ready' });
+  useEffect(() => {
+    if (!needs) return undefined;
+    let live = true;
+    fetchDetail(S, c.hash).then((text) => {
+      if (!live) return;
+      c.diff = normDiff(text); c.loaded = true;
+      setSt({ k: 'ready' });
+    }).catch((err) => {
+      if (live) setSt({ k: 'err', msg: errText(err) });
+    });
+    return () => { live = false; };
+  }, []);
+  if (st.k === 'load') return html`<div class="dload">Loading…</div>`;
+  if (st.k === 'err') return html`<div class="dload err">${'Failed to load: ' + st.msg}</div><div class="dload">Click this row again to retry.</div>`;
+  return html`<${Detail} c=${c} />`;
+}
+function Pane({ S, c, pickN }) {
+  const meta = [c.author, c.date].filter(Boolean).join(' · ');
+  return html`<div class="wpane">
+    <div class="phead">
+      <div class="pl1">${c.hash && html`<span class="hash">${c.hash}</span>`}<span class="psub" title=${c.subject}>${c.subject}</span></div>
+      ${meta && html`<div class="pmeta">${meta}</div>`}
+    </div>
+    <div class="pbody"><${PaneBody} key=${pickN} S=${S} c=${c} /></div>
+  </div>`;
+}
+
+// the layout for the room it has: the newest commit / latest two / all in a column / timeline / list + diff
+function layoutFor(size, surface) {
+  const px = size && size.px;
+  const w = (px && px.width) || ((size && size.w) || 2) * 160;
+  const h = (px && px.height) || ((size && size.h) || 2) * 160;
+  const board = surface === 'board';
+  const narrow = w < 240;
+  const short = board && h < 230;
+  if (narrow) return short ? 'tiny' : 'column';
+  if (short) return 'latest';
+  return w >= 560 ? 'wide' : 'full';
+}
+
+function Log({ raw }) {
+  const size = useSize();
+  const surface = useSurface();
+  const { list, errorLine } = useMemo(() => parseData(raw), [raw]);
+  const [, setTick] = useState(0);
+  const ref = useRef(null);
+  if (!ref.current) ref.current = { alive: true, cache: new Map(), pending: new Map(), touch: () => {} };
+  const S = ref.current;
+  S.touch = () => { if (S.alive) setTick((n) => n + 1); };
+  useEffect(() => { S.alive = true; return () => { S.alive = false; }; }, []);
+  const [q, setQ] = useState('');
+  const [wideOpen, setWideOpen] = useState(false); // wide: false = narrow strip, true = full list
+  const [pick, setPick] = useState({ i: 0, n: 0 });
+
+  const mode = layoutFor(size, surface);
+  const query = q.trim().toLowerCase();
+  const hits = list.map((c) => !query || [c.subject, c.hash, c.author].some((s) => s.toLowerCase().includes(query)));
+  const shown = hits.filter(Boolean).length;
+  const countText = query ? shown + ' / ' + list.length : list.length + ' total';
+
+  if (!list.length) {
+    return html`<div class="cl"><div class="titlebar"><span class="title">Commit log</span></div>
+      ${errorLine ? html`<div class="empty">The command produced no commit log</div><div class="rawline">${errorLine}</div>` : html`<div class="empty">No commits</div>`}</div>`;
+  }
+
+  if (mode === 'tiny') {
+    const c = list[0];
+    return html`<div class="cl"><div class="s1">
+      <div class="s1top">${c.hash && html`<span class="hash">${c.hash}</span>`}</div>
+      <div class="s1msg" title=${c.subject}>${c.subject}</div>
+      <div class="s1sub">${list.length + ' total'}</div>
+    </div></div>`;
+  }
+  if (mode === 'latest' || mode === 'column') {
+    const one = mode === 'latest';
+    const items = one ? list.slice(0, 2) : list;
+    const ul = html`<ul class="cl-lines">${items.map((c, i) => html`<${Line} key=${i} c=${c} one=${one} />`)}</ul>`;
+    return html`<div class="cl"><div class="titlebar"><span class="title">Commit log</span><span class="sub">${one ? 'Latest ' + items.length : list.length + ' total'}</span></div>
+      ${one ? ul : html`<div class="cscroll">${ul}</div>`}</div>`;
+  }
+
+  const wide = mode === 'wide';
+  const find = list.length > 3 && html`<input class="find" type="search" placeholder="Search title / hash / author" aria-label="Search by title, hash or author" autocomplete="off" spellcheck=${false}
+    value=${q} hidden=${wide && !wideOpen} onInput=${(e) => setQ(e.target.value)} />`;
+  const cur = list[Math.min(pick.i, list.length - 1)];
+  const pickRow = (c) => { c.ent = null; setPick((p) => ({ i: list.indexOf(c), n: p.n + 1 })); };
+  const timeline = html`<div class="scroll" hidden=${wide && !wideOpen}>
+    <ul class="tl">${list.map((c, i) => html`<${Row} key=${i} S=${S} c=${c} wide=${wide} selected=${wide && c === cur} hidden=${!hits[i]} onPick=${pickRow} />`)}</ul>
+    ${shown === 0 && html`<div class="empty">No matching commits</div>`}
+  </div>`;
+  const head = html`<div class="titlebar"><span class="title">Commit log</span><span class="sub">${countText}</span></div>`;
+
+  if (!wide) return html`<div class="cl">${head}${find}${timeline}</div>`;
+
+  // wide: a narrow strip (hash + month-day) by default, the toggle opens the full list with search
+  const title = wideOpen ? 'Collapse to narrow list' : 'Expand to full list';
+  return html`<div class="cl">${head}
+    <div class=${'wgrid' + (wideOpen ? '' : ' narrow')}>
+      <div class="wcol">
+        <div class="wctl"><button type="button" class="wtog" title=${title} aria-label=${title} aria-expanded=${String(wideOpen)} onClick=${() => setWideOpen(!wideOpen)}>${wideOpen ? '‹' : '›'}</button>${find}</div>
+        ${timeline}
+        <div class="nscroll" hidden=${wideOpen}>
+          ${list.map((c, i) => html`<button type="button" key=${i} class=${'nrow' + (c === cur ? ' sel' : '')} title=${(c.hash ? c.hash + '  ' : '') + c.subject} aria-pressed=${String(c === cur)} onClick=${() => pickRow(c)}>
+            <span class="nl1"><span class="hash">${c.hash || '·'}</span></span>
+            ${c.date && html`<span class="nd">${c.date.length > 5 ? c.date.slice(5) : c.date}</span>`}
+          </button>`)}
+        </div>
+      </div>
+      <${Pane} S=${S} c=${cur} pickN=${pick.n} />
+    </div></div>`;
+}
+
+// One count per data event (ccb.onData: also a refresh or a re-sent identical value). The log starts over
+// for each one (open rows, search, selection, cached diffs), the way the old frame redraw did. useData() is
+// not used: it only redraws when the value changes, and ccb.onData must not be called next to it.
+function useDataEvents() {
+  const [s, setS] = useState(() => {
+    const dk = window.deck;
+    return { raw: (dk && dk.data !== undefined) ? dk.data : (ccb.data !== undefined ? ccb.data : null), n: 1 };
+  });
+  useEffect(() => (ccb.onData ? ccb.onData((d) => setS((x) => ({ raw: d !== undefined ? d : ccb.data, n: x.n + 1 }))) : undefined), []);
+  return s;
+}
+
+function App() {
+  const ev = useDataEvents();
+  return html`<${Card} class="cl-card"><${Log} key=${ev.n} raw=${ev.raw} /><//>`;
+}
+
+render(html`<${App} />`, document.getElementById('app'));
+</script>

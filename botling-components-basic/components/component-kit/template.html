@@ -1,0 +1,181 @@
+<meta name="ccb-kit" content="1">
+<style>
+  html[data-surface="board"], html[data-surface="board"] body, html[data-surface="board"] #app { height:100%; margin:0; }
+  .ck-card { --ccb-pad:12px; }
+  html[data-surface="board"] .ck-card { height:100%; }
+  .ck { display:flex; flex-direction:column; gap:10px; width:100%; min-width:0; color:var(--text); font-size:14px; line-height:1.4; }
+  .ck > * { flex:none; min-width:0; margin:0; }
+
+  .ck-title { font-size:16px; font-weight:600; overflow-wrap:anywhere; }
+  .ck-question { font-size:14px; overflow-wrap:anywhere; }
+
+  /* Multiple-choice buttons: label, then the description small and muted, "Selected" at the right edge */
+  .ck-options { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap:6px; }
+  .ck-opt {
+    position:relative; width:100%; min-height:44px; padding:8px 12px; box-sizing:border-box;
+    display:flex; flex-wrap:wrap; align-items:center; column-gap:8px; row-gap:2px;
+    border:1px solid var(--border); border-radius:10px; background:var(--raised);
+    color:var(--text); font:inherit; text-align:left; cursor:pointer;
+    transition:background .15s, border-color .15s, opacity .15s, transform .08s;
+  }
+  .ck-opt:hover:not(:disabled) { background:var(--hover); }
+  .ck-opt:active:not(:disabled) { transform:scale(.995); }
+  .ck-opt:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+  .ck-opt:disabled { cursor:default; color:var(--text); }
+  .ck-opt.is-chosen { border-color:var(--blue); background:var(--selected); }
+  .ck-opt.is-dim { opacity:.55; }
+  .ck-opt-label { font-size:14px; font-weight:500; overflow-wrap:anywhere; min-width:0; }
+  .ck-opt-desc { font-size:12px; color:var(--muted); overflow-wrap:anywhere; min-width:0; }
+  .ck-chosen { margin-left:auto; font-size:12px; font-weight:600; color:var(--blue); white-space:nowrap; }
+
+  /* Custom answer (Other): the input and Submit share one height */
+  .ck-other { display:flex; flex-wrap:wrap; gap:6px; }
+  .ck-input {
+    flex:1 1 120px; width:0; min-width:0; min-height:44px; padding:8px 12px; box-sizing:border-box;
+    border:1px solid var(--border); border-radius:10px; background:var(--raised);
+    color:var(--text); font:inherit; font-size:14px;
+  }
+  .ck-input::placeholder { color:var(--muted); }
+  .ck-input:focus { outline:none; border-color:var(--blue); background:var(--selected); }
+  .ck-input:focus-visible { outline:2px solid var(--blue); outline-offset:1px; }
+  .ck-input:disabled { opacity:.55; cursor:default; }
+  .ccb-button.ck-submit { flex:1 0 auto; min-height:44px; padding:0 16px; font-size:13px; }
+  .ccb-button.ck-submit:focus-visible { outline:2px solid var(--text); outline-offset:2px; }
+  .ck-result { padding:6px 10px; border-left:2px solid var(--blue); font-size:13px; overflow-wrap:anywhere; }
+
+  /* Data cards: compact, the note in small muted text; a suggested one is orange with a tag */
+  .ck-cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 120px), 1fr)); gap:6px; }
+  .ck-dcard {
+    min-width:0; padding:7px 10px; display:flex; flex-direction:column; gap:1px;
+    border:1px solid var(--border); border-radius:10px; background:var(--raised);
+  }
+  .ck-dcard.is-suggest { border-color:var(--orange); }
+  .ck-tag {
+    align-self:flex-start; margin-bottom:2px; padding:0 6px; border-radius:999px;
+    background:var(--orange); color:var(--on-orange, #1B1B1F); font-size:10px; font-weight:600; line-height:16px;
+  }
+  .ck-dlabel { font-size:11px; color:var(--muted); overflow-wrap:anywhere; }
+  .ck-dvalue { font-size:15px; font-weight:600; overflow-wrap:anywhere; }
+  .ck-dnote { font-size:11px; color:var(--muted); overflow-wrap:anywhere; }
+
+  /* Short tile: tighter spacing; nothing is hidden, the tile scrolls */
+  @container ccb (max-height: 179px) { .ck { gap:6px; } .ck-title { font-size:14px; } }
+  /* One cell wide: descriptions wrap under the label, Submit takes the full row */
+  @container ccb (max-width: 239px) {
+    .ck-opt-label, .ck-opt-desc { flex:1 1 100%; }
+    .ck-chosen { margin-left:0; }
+    .ccb-button.ck-submit { flex:1 1 100%; }
+  }
+</style>
+<div id="app"></div>
+<script>
+const { html, render, useState, useEffect, useMemo, useRef, Card, Button } = ccb.kit;
+
+const str = (v) => (v == null ? '' : String(v));
+
+// The answer goes out the way the old frame sent it (deck.answer), through ccb.answer when deck is not there.
+function send(value) {
+  if (window.deck && typeof window.deck.answer === 'function') window.deck.answer(value);
+  else if (window.ccb && typeof window.ccb.answer === 'function') window.ccb.answer(value);
+}
+
+// Same reading as before: every field optional; chosen only when a number, answer only when a non-empty string;
+// "Other" shows only for allowOther === true; a card is "suggest" only for tone === "suggest".
+function prepare(raw) {
+  const d = (raw && typeof raw === 'object') ? raw : {};
+  const obj = (x) => (x && typeof x === 'object' ? x : {});
+  return {
+    title: d.title ? String(d.title) : '',
+    question: d.question ? String(d.question) : '',
+    options: (Array.isArray(d.options) ? d.options : []).map((o) => ({
+      label: str(obj(o).label), description: obj(o).description ? String(obj(o).description) : '' })),
+    allowOther: d.allowOther === true,
+    placeholder: d.otherPlaceholder ? String(d.otherPlaceholder) : 'Other (type your own)',
+    chosen: typeof d.chosen === 'number' ? d.chosen : null,
+    answer: typeof d.answer === 'string' && d.answer !== '' ? d.answer : null,
+    cards: (Array.isArray(d.cards) ? d.cards : []).map((c) => ({
+      label: str(obj(c).label), value: str(obj(c).value), note: obj(c).note ? String(obj(c).note) : '',
+      suggest: obj(c).tone === 'suggest' }))
+  };
+}
+
+function Kit({ p }) {
+  const [st, setSt] = useState({ chosen: p.chosen, answer: p.answer });
+  // Answers once: a second press before the redraw sends nothing (pressing, Enter and Submit all share this).
+  const sent = useRef(p.chosen !== null || p.answer !== null);
+  const inputEl = useRef(null);
+  const composing = useRef(false);
+  const done = st.chosen !== null || st.answer !== null;
+
+  const pick = (i) => {
+    if (sent.current) return;
+    sent.current = true;
+    setSt((s) => ({ chosen: i, answer: s.answer }));
+    send(i);
+  };
+  const submitOther = () => {
+    const value = inputEl.current ? inputEl.current.value.trim() : '';
+    if (!value || sent.current) return;
+    sent.current = true;
+    setSt((s) => ({ chosen: s.chosen, answer: value }));
+    send(value);
+  };
+  const onKeyDown = (e) => {
+    // Enter while confirming an IME composition does not submit (Safari: keydown right after compositionend is 229)
+    if (composing.current || e.isComposing || e.keyCode === 229) return;
+    if (e.key === 'Enter') { e.preventDefault(); submitOther(); }
+  };
+
+  return html`<div class="ck">
+    ${p.title && html`<h2 class="ck-title">${p.title}</h2>`}
+    ${p.question && html`<p class="ck-question">${p.question}</p>`}
+    ${p.options.length > 0 && html`<div class="ck-options">
+      ${p.options.map((o, i) => {
+        const chosen = st.chosen === i;
+        return html`<button key=${i} type="button" disabled=${done} aria-pressed=${chosen ? 'true' : 'false'}
+          aria-label=${o.label || o.description ? undefined : 'Option ' + (i + 1)}
+          class=${'ck-opt' + (chosen ? ' is-chosen' : '') + (done && !chosen ? ' is-dim' : '')} onClick=${() => pick(i)}>
+          <span class="ck-opt-label">${o.label}</span>
+          ${o.description && html`<span class="ck-opt-desc">${o.description}</span>`}
+          ${chosen && html`<span class="ck-chosen">Selected</span>`}
+        </button>`;
+      })}
+    </div>`}
+    ${p.allowOther && st.answer === null && html`<div class="ck-other">
+      <input type="text" class="ck-input" ref=${inputEl} placeholder=${p.placeholder} aria-label=${p.placeholder} disabled=${done}
+        onKeyDown=${onKeyDown}
+        onCompositionStart=${() => { composing.current = true; }}
+        onCompositionEnd=${() => { setTimeout(() => { composing.current = false; }); }} />
+      <${Button} type="button" tone="primary" class="ck-submit" disabled=${done} onClick=${submitOther}>Submit<//>
+    </div>`}
+    ${p.allowOther && st.answer !== null && html`<p class="ck-result" role="status">${'Your answer: ' + st.answer}</p>`}
+    ${p.cards.length > 0 && html`<div class="ck-cards">
+      ${p.cards.map((c, i) => html`<div key=${i} class=${'ck-dcard' + (c.suggest ? ' is-suggest' : '')}>
+        ${c.suggest && html`<span class="ck-tag">Suggested</span>`}
+        <span class="ck-dlabel">${c.label}</span>
+        <span class="ck-dvalue">${c.value}</span>
+        ${c.note && html`<span class="ck-dnote">${c.note}</span>`}
+      </div>`)}
+    </div>`}
+  </div>`;
+}
+
+const readRaw = (d) => (d !== undefined ? d : (window.deck && window.deck.data !== undefined ? window.deck.data : ccb.data));
+
+// One count per data event (ccb.onData: also a re-sent identical value): the card starts over for each one, as the
+// old frame redraw did (typed text cleared, answered or not read again from chosen / answer).
+// useData() is not used: it only redraws when the value changes, and ccb.onData must not be called next to it.
+function useDataEvents() {
+  const [s, setS] = useState(() => ({ raw: readRaw(undefined), n: 1 }));
+  useEffect(() => (ccb.onData ? ccb.onData((d) => setS((x) => ({ raw: readRaw(d), n: x.n + 1 }))) : undefined), []);
+  return s;
+}
+
+function App() {
+  const ev = useDataEvents();
+  const p = useMemo(() => prepare(ev.raw), [ev]);
+  return html`<${Card} class="ck-card"><${Kit} key=${ev.n} p=${p} /><//>`;
+}
+
+render(html`<${App} />`, document.getElementById('app'));
+</script>

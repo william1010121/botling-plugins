@@ -1,0 +1,146 @@
+<meta name="ccb-kit" content="1">
+<style>
+  .vs { display:flex; flex-direction:column; gap:8px; min-width:0; overflow-wrap:anywhere; }
+  .vs-head { display:flex; align-items:flex-start; gap:8px 12px; flex-wrap:wrap; }
+  .vs-htext { flex:1 1 200px; min-width:0; }
+  .vs-title { font-size:16px; font-weight:600; line-height:1.35; color:var(--text); }
+  .vs-sub { margin-top:2px; font-size:12px; line-height:1.45; color:var(--muted); }
+  .vs-toggle { flex:none; min-height:44px; padding:0 14px; font-size:13px; }
+
+  .vs-tl { position:relative; margin:0; padding:0; list-style:none; }
+  .vs-tl::before { content:""; position:absolute; left:6px; top:22px; bottom:22px; width:2px; background:var(--line); border-radius:1px; }
+  .vs-v { position:relative; padding-left:26px; }
+  .vs-v::before { content:""; position:absolute; left:0; top:17px; width:14px; height:14px; border-radius:50%; background:var(--line); border:3px solid transparent; background-clip:padding-box; }
+  .vs-v.first::before { background:var(--blue); box-shadow:0 0 0 4px color-mix(in srgb, var(--blue) 16%, transparent); }
+  .vs-vh { display:flex; align-items:center; gap:8px 10px; flex-wrap:wrap; width:100%; min-height:44px; padding:6px 8px; margin:0; border:0; border-radius:10px; background:none; color:var(--text); font:inherit; text-align:left; cursor:pointer; transition:background .15s; }
+  .vs-vh:hover { background:var(--hover); }
+  .vs-vh:active { background:var(--selected); }
+  .vs-vh:focus-visible, .vs-toggle:focus-visible { outline:2px solid var(--blue); outline-offset:1px; }
+  .vs-vh.flat { cursor:default; }
+  .vs-badge { flex:none; padding:2px 10px; border-radius:999px; background:var(--chip); font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .vs-v.first .vs-badge { background:color-mix(in srgb, var(--blue) 16%, transparent); color:var(--blue); }
+  .vs-theme { flex:1 1 140px; min-width:0; font-size:14px; font-weight:500; line-height:1.4; }
+  .vs-chev { flex:none; margin-left:auto; width:8px; height:8px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); transform:rotate(-45deg); transition:transform .18s; }
+  .vs-v.open .vs-chev { transform:rotate(45deg); }
+  .vs-pts { margin:0 0 6px; padding:2px 8px 6px 28px; }
+  .vs-pts li { margin-top:5px; font-size:13px; line-height:1.5; color:var(--text); }
+  .vs-pts li::marker { color:var(--muted); }
+
+  /* Small tile (about one cell, or a short Board tile / panel): only the newest version badge and its theme */
+  .vs-tiny { display:none; flex-direction:column; justify-content:center; gap:6px; min-width:0; height:100%; }
+  .vs-tiny-lbl { font-size:11px; color:var(--muted); }
+  .vs-tiny-badge { align-self:flex-start; padding:2px 12px; border-radius:999px; background:color-mix(in srgb, var(--blue) 16%, transparent); color:var(--blue); font-size:22px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .vs-tiny-theme { font-size:14px; font-weight:500; line-height:1.4; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  @container ccb (max-height: 210px) {
+    .vs-full { display:none; }
+    .vs-tiny { display:flex; }
+  }
+  @container ccb (max-width: 230px) {
+    .vs-full { display:none; }
+    .vs-tiny { display:flex; }
+  }
+</style>
+<div id="app"></div>
+<script>
+const { html, render, useData, useState, useEffect, Card, Button, Empty } = ccb.kit;
+
+const SAMPLE = {"title":"ClaudeCodeBot versions at a glance","subtitle":"Newest first. One sentence of theme per version, highlights below.","versions":[
+{"version":"1.11.0","theme":"Bots no longer stop at just saying it, and finding a bot is faster","points":["When a bot says \"I will do this next\" but doesn't, it is sent back to finish; the reply is still shown first","Pin your favorite bots in the left column, and search bots with Cmd+K","Cards can be freely resized, and the content lays itself out","/share lets you share the features you built; everyone votes with a thumbs up and you pick which ones go into the next version","Once a component is built, it calls back the bot you originally asked to show it to you"]},
+{"version":"1.10.1","theme":"Stability fixes","points":["When the app restarts or updates, the bot no longer spends an extra round on handoff","Actions blocked by auto mode now show an \"Allow\" card right in the chat","Question buttons appear immediately and are no longer collapsed away"]},
+{"version":"1.10.0","theme":"Components feel more like small tools","points":["Pins above the input box become small icons; click one to open the component itself","Components in chat are wider, have no border, and sit inside the reply bubble","A narrow window no longer switches to the side columns; plugin updates no longer interrupt background work"]},
+{"version":"1.9.0","theme":"Board and \"Make it a component\"","points":["The board becomes a grid, like widgets on a phone home screen","Every bot has its own components, which can be pinned to the bot","A bot's reply can be turned into a component in one click; bots also suggest it proactively","Settings gain a \"Health check\" that checks Claude Code and Codex; the right column can collapse into a row of icons"]},
+{"version":"1.8.0","theme":"Component management and Codex review","points":["Counts how many times each component was invoked, up to 20 per bot","The left column can collapse into a row of avatars","Components can ask Codex to review code directly, with a selectable review scope"]},
+{"version":"1.7.0 / 1.7.1","theme":"Codex joins, resume after disconnect","points":["Codex reviews your work, and subagents can go back and forth on reviews","After a network drop it resumes automatically; a new usage card is added","Interrupting a bot no longer stops its background subagents","1.7.1 is the official release of 1.7.0, and also fixes two crashes and a false-sleep issue"]},
+{"version":"1.6.0","theme":"Components can fetch live data","points":["Components can fetch data with commands (for example GPU status, git history)","A brand-new settings page; each bot can set its subagent model and thinking effort","The Maintainer hands component building over to a dedicated background helper"]},
+{"version":"1.5.0","theme":"Result pages and the / menu","points":["Report pages are shown right in the chat","Type / to call components and commands, and @ to bring a bot into any conversation","Safe actions are allowed automatically"]},
+{"version":"1.4.0","theme":"See what the bot is doing","points":["Shows the bot's work steps; bots hand work to subagents by default","Create projects from chat; unread counts; developer mode"]},
+{"version":"1.3.0","theme":"Groups like a messaging app","points":["Group chat now looks like a messaging app; each bot's messages stay in its own chat"]},
+{"version":"1.2.0","theme":"Group chat","points":["Multiple bots can chat together; links open externally"]},
+{"version":"1.1.0","theme":"Your own bots","points":["You can create your own bots; answered questions are collapsed","A bot asks first before using a tool that is not authorized"]},
+{"version":"1.0.0","theme":"First release","points":["Main bot, one manager bot per project, temporary teams, scheduled jobs","Chat with Markdown and math support, and plugins managed by the Maintainer"]}]};
+
+const txt = (v) => ((v === undefined || v === null) ? '' : String(v));
+
+// Accepts the object, a bare array of versions, a JSON string, or one of those wrapped in data/content/result/output/text.
+function parse(v, depth) {
+  if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { return null; } }
+  if (v && !Array.isArray(v) && typeof v === 'object' && !Array.isArray(v.versions) && depth < 3) {
+    for (const k of ['data', 'content', 'result', 'output', 'text']) {
+      if (v[k] !== undefined) { const r = parse(v[k], depth + 1); if (r) return r; }
+    }
+  }
+  if (Array.isArray(v)) v = { versions: v };
+  return (v && typeof v === 'object' && Array.isArray(v.versions)) ? v : null;
+}
+
+function prepare(raw) {
+  const data = parse(raw, 0) || SAMPLE;
+  return {
+    title: txt(data.title),
+    subtitle: txt(data.subtitle),
+    versions: data.versions.filter((x) => x && typeof x === 'object').map((x) => ({
+      version: txt(x.version),
+      theme: txt(x.theme),
+      points: (Array.isArray(x.points) ? x.points : []).map(txt).filter(Boolean)
+    }))
+  };
+}
+
+function Content({ title, subtitle, versions }) {
+  // Newest version starts open, the rest closed; only versions with points can open.
+  const [open, setOpen] = useState(() => versions.map((v, i) => i === 0));
+  const withPts = versions.map((v, i) => i).filter((i) => versions[i].points.length > 0);
+  const allOpen = withPts.every((i) => open[i]);
+  const flip = (i) => setOpen((o) => o.map((x, j) => (j === i ? !x : x)));
+  const setAll = () => setOpen((o) => o.map((x, j) => (withPts.includes(j) ? !allOpen : x)));
+  return html`<div class="vs vs-full">
+    ${(title || subtitle || withPts.length > 0) && html`<div class="vs-head">
+      <div class="vs-htext">
+        ${title && html`<div class="vs-title">${title}</div>`}
+        ${subtitle && html`<div class="vs-sub">${subtitle}</div>`}
+      </div>
+      ${withPts.length > 0 && html`<${Button} class="vs-toggle" onClick=${setAll}>${allOpen ? 'Collapse all' : 'Expand all'}<//>`}
+    </div>`}
+    ${versions.length ? html`<ol class="vs-tl">${versions.map((v, i) => {
+      const has = v.points.length > 0;
+      const isOpen = !!open[i];
+      return html`<li key=${i} class=${'vs-v' + (i === 0 ? ' first' : '') + (isOpen ? ' open' : '')}>
+        <button type="button" class=${'vs-vh' + (has ? '' : ' flat')} aria-expanded=${isOpen ? 'true' : 'false'} onClick=${has ? () => flip(i) : undefined}>
+          ${v.version && html`<span class="vs-badge">${v.version}</span>`}
+          ${v.theme && html`<span class="vs-theme">${v.theme}</span>`}
+          ${has && html`<span class="vs-chev"></span>`}
+        </button>
+        ${has && isOpen && html`<ul class="vs-pts">${v.points.map((p, j) => html`<li key=${j}>${p}</li>`)}</ul>`}
+      </li>`;
+    })}</ol>` : html`<${Empty} title="No version data yet" />`}
+  </div>`;
+}
+
+function VersionsSummary() {
+  const raw = useData();
+  const { title, subtitle, versions } = prepare(raw);
+  const newest = versions[0];
+
+  // Chip: the newest version number (neutral); cleared when there is none.
+  const chip = newest && newest.version ? newest.version : '';
+  useEffect(() => { ccb.setStatus(chip ? { text: chip, tone: 'neutral' } : null); }, [chip]);
+
+  // Same content keeps the user's open/closed state; new content starts again from the default.
+  const sig = JSON.stringify([title, subtitle, versions]);
+
+  const tiny = html`<div class="vs-tiny">
+    ${newest
+      ? html`<div class="vs-tiny-lbl">Latest version</div>
+        ${newest.version && html`<div class="vs-tiny-badge">${newest.version}</div>`}
+        ${newest.theme && html`<div class="vs-tiny-theme">${newest.theme}</div>`}`
+      : html`<div class="vs-tiny-lbl">No version data yet</div>`}
+  </div>`;
+
+  return html`<${Card}>
+    ${tiny}
+    <${Content} key=${sig} title=${title} subtitle=${subtitle} versions=${versions} />
+  <//>`;
+}
+
+render(html`<${VersionsSummary} />`, document.getElementById('app'));
+</script>

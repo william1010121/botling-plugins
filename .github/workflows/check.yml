@@ -1,0 +1,24 @@
+name: check
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Privacy scan
+        env:
+          # Optional: private words (names, machines, projects), one per line. Never printed.
+          BOTLING_SCAN_TERMS: ${{ secrets.SCAN_PRIVATE_TERMS }}
+        run: node tools/scan.mjs
+      - name: index.json is up to date
+        run: node tools/build-index.mjs --check

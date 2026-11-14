@@ -1,0 +1,225 @@
+<meta name="ccb-kit" content="1">
+<style>
+  html[data-surface="board"], html[data-surface="board"] body, html[data-surface="board"] #app { height:100%; margin:0; }
+  .ms-card { --ccb-pad:12px; }
+  html[data-surface="board"] .ms-card { height:100%; }
+  .ms { display:flex; flex-direction:column; gap:8px; width:100%; min-width:0; color:var(--text); }
+  .ms > * { flex:none; min-width:0; }
+
+  .ms-question { margin:0 0 2px; font-size:15px; font-weight:600; line-height:1.4; overflow-wrap:anywhere; }
+  .ms-hint { font-size:12px; color:var(--muted); line-height:1.4; }
+  .ms-list { display:flex; flex-direction:column; gap:8px; }
+
+  /* One option: a label around a real (visually hidden) checkbox, so click, Space and focus are the browser's own. */
+  .ms-opt {
+    position:relative; display:flex; align-items:center; gap:12px;
+    min-height:48px; padding:10px 14px; box-sizing:border-box; width:100%;
+    border:1px solid var(--border); border-radius:12px; background:var(--raised);
+    cursor:pointer; text-align:left; transition:background .15s, border-color .15s;
+  }
+  .ms-opt:hover:not(.locked) { background:var(--hover); }
+  .ms-opt:focus-within { outline:2px solid var(--blue); outline-offset:2px; }
+  .ms-opt.on { border-color:var(--blue); background:var(--selected); }
+  .ms-opt.locked { cursor:default; }
+  .ms-opt.faded { opacity:.4; }
+  .ms-opt input[type="checkbox"] { position:absolute; opacity:0; width:1px; height:1px; margin:0; pointer-events:none; }
+  .ms-box {
+    flex:none; position:relative; width:22px; height:22px; box-sizing:border-box;
+    border-radius:6px; border:1.5px solid color-mix(in srgb, var(--muted) 45%, var(--ground)); background:var(--ground); transition:background .15s, border-color .15s;
+  }
+  .ms-opt.on .ms-box { border-color:var(--blue); background:var(--blue); }
+  .ms-box::after {
+    content:''; position:absolute; left:7px; top:3px; width:5px; height:10px;
+    border:solid #FFFFFF; border-width:0 2px 2px 0; transform:rotate(45deg); opacity:0;
+  }
+  .ms-opt.on .ms-box::after { opacity:1; }
+  .ms-texts { display:flex; flex-direction:column; gap:2px; min-width:0; flex:1 1 auto; }
+  .ms-title { font-size:14px; line-height:1.4; overflow-wrap:anywhere; }
+  .ms-detail {
+    font-size:12px; color:var(--muted); line-height:1.4; overflow-wrap:anywhere;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+
+  .ms-other { display:flex; flex-direction:column; gap:6px; width:100%; }
+  .ms-other.faded { opacity:.4; }
+  .ms-other-label { font-size:13px; color:var(--muted); }
+  .ms-other-label.done { color:var(--blue); font-weight:600; }
+  .ms-other input {
+    display:block; width:100%; min-height:48px; padding:10px 14px; box-sizing:border-box;
+    border-radius:12px; border:1px solid var(--border); background:var(--raised);
+    color:var(--text); font:inherit; font-size:16px; /* below 16px, iOS Safari auto-zooms the page on focus */
+  }
+  .ms-other input::placeholder { color:var(--muted); }
+  .ms-other input:focus { outline:none; border-color:var(--blue); background:var(--selected); }
+  .ms-other input.on { border-color:var(--blue); background:var(--selected); }
+  .ms-other input:disabled { cursor:default; opacity:1; color:var(--text); }
+
+  /* Sticks to the bottom of a scrolling tile, so Submit stays reachable while the options scroll. */
+  .ccb-button.ms-send {
+    position:sticky; bottom:0; width:100%; min-height:48px; margin-top:4px; padding:0 16px; box-sizing:border-box;
+    border-radius:12px; border:1px solid var(--blue); background:var(--selected); color:var(--text); font-size:14px;
+  }
+  .ccb-button.ms-send:hover:not(:disabled) { background:color-mix(in srgb, var(--blue) 30%, var(--selected)); }
+  .ccb-button.ms-send:focus-visible { outline:2px solid var(--blue); outline-offset:2px; }
+  /* Not faded by opacity: it sticks over scrolling options, so it stays solid. */
+  .ccb-button.ms-send:disabled { opacity:1; cursor:default; color:var(--muted); background:var(--raised); border-color:var(--border); }
+
+  /* Status line: only where the list is cut off (a short or one-cell tile), saying what is ticked. */
+  .ms-status { display:none; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ms-status b { color:var(--text); font-weight:600; }
+  @container ccb (max-height: 239px) { .ms-status { display:block; } .ms-hint { display:none; } .ms-question { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; } }
+  @container ccb (max-width: 239px) { .ms-status { display:block; } .ms-hint { display:none; } .ms-question { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; } }
+  /* Keyboard focus scrolls an option into view; keep it clear of the sticky Submit that sits over the bottom edge. */
+  .ms-opt, .ms-other input { scroll-margin-bottom:64px; }
+</style>
+<div id="app"></div>
+<script>
+const { html, render, useState, useEffect, useRef, useMemo, Card, Button } = ccb.kit;
+
+const str = (v) => (v == null ? '' : String(v));
+
+// The answer goes out the way the old frame sent it: through ccb.answer (window.deck is the older name).
+function send(value) {
+  const api = window.ccb || window.deck;
+  if (api && typeof api.answer === 'function') api.answer(value);
+}
+
+// Same reading as before. submitted ({chosen, extra}, saved by this card on submit) wins over chosen/extra;
+// chosen/extra not null means answered. Rows keep the index they have in options (an invalid entry leaves a gap);
+// ticked titles that are no longer in options get a row of their own so they stay visible. Matching is by title
+// through a Set (never an object keyed by title), so a title like "__proto__" or a duplicate behaves.
+function prepare(raw) {
+  const d = (raw && typeof raw === 'object') ? raw : {};
+  const options = Array.isArray(d.options) ? d.options : [];
+  const sub = d.submitted && typeof d.submitted === 'object' && Array.isArray(d.submitted.chosen) ? d.submitted : null;
+  const chosenList = sub ? sub.chosen : (Array.isArray(d.chosen) ? d.chosen : null);
+  const extraText = sub ? (typeof sub.extra === 'string' && sub.extra ? sub.extra : null) : (typeof d.extra === 'string' ? d.extra : null);
+  const answered = !!sub || chosenList !== null || extraText !== null;
+  const picked = new Set(answered && chosenList ? chosenList : []);
+  const known = new Set(options.filter((o) => o).map((o) => o.title));
+
+  const rows = [];
+  options.forEach((o, index) => {
+    if (!o || typeof o.title !== 'string') return;
+    rows.push({ key: 'o' + index, title: o.title, detail: o.detail ? str(o.detail) : '', checked: picked.has(o.title) });
+  });
+  if (answered && chosenList) {
+    chosenList.forEach((t, i) => { if (!known.has(t)) rows.push({ key: 'x' + i, title: str(t), detail: '', checked: true }); });
+  }
+  return { raw: d, question: d.question ? str(d.question) : '', rows: rows, answered: answered, extraText: extraText };
+}
+
+function MultiSelect({ p }) {
+  // checks: row key -> ticked. locked/shown/extra: what the answered card shows (from data, or from this submit).
+  const m = useRef({
+    checks: new Map(p.rows.map((r) => [r.key, r.checked])),
+    locked: p.answered,
+    shown: p.answered && p.extraText ? p.extraText : '',
+    extra: p.answered && p.extraText ? p.extraText : null,
+    faded: p.answered && p.extraText === null
+  }).current;
+  const [, setTick] = useState(0);
+  const redraw = () => setTick((t) => t + 1);
+  const sent = useRef(p.answered);
+  const inputEl = useRef(null);
+  const composing = useRef(false);
+  const otherVal = () => (inputEl.current ? inputEl.current.value : '');
+
+  // Answers once: lock first (a second press or Enter before the save ends sends nothing), save the merged data, then answer.
+  const submit = async () => {
+    if (sent.current) return;
+    const titles = p.rows.filter((r) => m.checks.get(r.key)).map((r) => r.title);
+    const raw = otherVal();
+    const extra = raw.trim();
+    if (!titles.length && !extra) return;
+    sent.current = true;
+    // Ticked titles joined with ", "; with Other text append "; Other: ..."; with only Other text, "Other: ..."
+    let text = titles.join(', ');
+    if (extra) text = text ? text + '; Other: ' + extra : 'Other: ' + extra;
+    m.locked = true;
+    m.shown = raw;
+    m.extra = extra || null;
+    m.faded = !extra;
+    redraw();
+    // Save before answering: after switching away from the chat and back, the card restores to the answered locked state
+    try {
+      if (typeof ccb.save === 'function') {
+        await ccb.save(Object.assign({}, p.raw, { submitted: { chosen: titles, extra: extra || null } }));
+      }
+    } catch (e) { /* still answer if saving fails */ }
+    send(text);
+  };
+
+  const locked = m.locked;
+  const ticked = p.rows.filter((r) => m.checks.get(r.key)).length;
+  const typed = !locked && otherVal().trim() !== '';
+  const canSend = !locked && (ticked > 0 || typed);
+
+  let status;
+  if (locked) {
+    status = html`<b>Submitted</b> · ${ticked + (m.extra ? 1 : 0)} ${ticked + (m.extra ? 1 : 0) === 1 ? 'answer' : 'answers'}`;
+  } else if (ticked === 0 && !typed) {
+    status = p.rows.length + (p.rows.length === 1 ? ' option' : ' options') + ' · tick any';
+  } else {
+    status = html`<b>${ticked}</b> of ${p.rows.length} ticked${typed ? ' + Other' : ''}`;
+  }
+
+  return html`<div class="ms">
+    ${p.question && html`<p class="ms-question">${p.question}</p>`}
+    <div class="ms-status" role="status">${status}</div>
+    ${!locked && html`<div class="ms-hint">You can select multiple options; if none fit, write it in "Other".</div>`}
+    <div class="ms-list">
+      ${p.rows.map((row) => {
+        const on = !!m.checks.get(row.key);
+        return html`<label key=${row.key} class=${'ms-opt' + (on ? ' on' : '') + (locked ? ' locked' : '') + (locked && !on ? ' faded' : '')}>
+          <input type="checkbox" checked=${on} disabled=${locked}
+            onChange=${(e) => { if (sent.current) return; m.checks.set(row.key, e.target.checked); redraw(); }} />
+          <span class="ms-box" aria-hidden="true"></span>
+          <span class="ms-texts">
+            <span class="ms-title">${row.title}</span>
+            ${row.detail && html`<span class="ms-detail" title=${row.detail}>${row.detail}</span>`}
+          </span>
+        </label>`;
+      })}
+    </div>
+    <div class=${'ms-other' + (locked && m.faded ? ' faded' : '')}>
+      <div class=${'ms-other-label' + (locked && m.extra ? ' done' : '')}>${locked && m.extra ? '✓ Other' : 'Other'}</div>
+      <input type="text" placeholder="Other, write your own…" aria-label="Other, write your own" ref=${inputEl}
+        value=${locked ? m.shown : undefined} disabled=${locked} class=${locked && m.extra ? 'on' : ''}
+        onInput=${redraw}
+        onCompositionStart=${() => { composing.current = true; }}
+        onCompositionEnd=${() => {
+          // In some browsers compositionend arrives before the composing keydown; release one tick later
+          setTimeout(() => { composing.current = false; });
+        }}
+        onKeyDown=${(e) => {
+          // Enter used to confirm IME composition does not submit
+          if (composing.current || e.isComposing || e.keyCode === 229) return;
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          submit();
+        }} />
+    </div>
+    <${Button} class="ms-send" disabled=${!canSend} onClick=${submit}>${locked ? 'Submitted' : 'Submit'}<//>
+  </div>`;
+}
+
+const readRaw = (d) => (d !== undefined ? d : (window.deck && window.deck.data !== undefined ? window.deck.data : ccb.data));
+
+// One count per data event (ccb.onData: also a re-sent identical value): the card starts over for each one, as the
+// old frame redraw did (ticks and typed text cleared; answered or not comes from submitted/chosen/extra).
+// useData() is not used: it only redraws when the value changes, and ccb.onData must not be called next to it.
+function useDataEvents() {
+  const [s, setS] = useState(() => ({ raw: readRaw(undefined), n: 1 }));
+  useEffect(() => (ccb.onData ? ccb.onData((d) => setS((x) => ({ raw: readRaw(d), n: x.n + 1 }))) : undefined), []);
+  return s;
+}
+
+function App() {
+  const ev = useDataEvents();
+  const p = useMemo(() => prepare(ev.raw), [ev]);
+  return html`<${Card} class="ms-card"><${MultiSelect} key=${ev.n} p=${p} /><//>`;
+}
+
+render(html`<${App} />`, document.getElementById('app'));
+</script>

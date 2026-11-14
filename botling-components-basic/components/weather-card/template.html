@@ -1,0 +1,57 @@
+<meta name="ccb-kit" content="1">
+<style>
+  .wx { display:flex; flex-direction:column; gap:10px; min-width:0; }
+  .wx-main { display:flex; flex-wrap:wrap; align-items:center; gap:4px 16px; min-width:0; }
+  .wx-temps { flex:none; display:flex; align-items:baseline; gap:8px; white-space:nowrap; }
+  .wx-low { font-size:18px; color:var(--muted); }
+  .wx-cond { flex:1 1 140px; min-width:0; font-size:15px; line-height:20px; overflow-wrap:anywhere;
+    display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:3; overflow:hidden; }
+  .wx-tip { font-size:12px; line-height:16px; color:var(--muted); overflow-wrap:anywhere; }
+  .wx .ccb-stat__value { font-size:40px; line-height:44px; }
+  .wx-rain-short { display:none; flex:none; font-size:12px; line-height:16px; color:var(--muted); white-space:nowrap; }
+  html[data-size$="x1"]:not([data-size="1x1"]) .wx-rain-short { display:block; }
+  @container ccb (max-width: 239px) { .wx .ccb-stat__value { font-size:32px; line-height:36px; } .wx-low { font-size:15px; } }
+</style>
+<div id="app"></div>
+<script>
+const { html, render, useData, useEffect, Card, Stat, Bar, Empty } = ccb.kit;
+
+const has = (v) => v !== undefined && v !== null && v !== '';
+const deg = (v) => (typeof v === 'number' ? v + '°' : String(v));
+
+function Weather() {
+  const d = useData();
+  const hasHigh = has(d.tempHigh);
+  const hasLow = has(d.tempLow);
+  const hasRain = has(d.rainChance);
+  const pct = hasRain ? Math.max(0, Math.min(100, Number(d.rainChance) || 0)) : 0;
+
+  // Chip: "26°/19°", tone warns when rain is likely.
+  const temps = hasHigh && hasLow ? deg(d.tempHigh) + '/' + deg(d.tempLow) : hasHigh ? deg(d.tempHigh) : hasLow ? deg(d.tempLow) : '';
+  const status = temps || hasRain ? (temps && hasRain ? temps + ' ' + pct + '%' : temps || 'Rain ' + pct + '%') : '';
+  const tone = hasRain && pct >= 60 ? 'warning' : 'neutral';
+  useEffect(() => { ccb.setStatus(status ? { text: status, tone } : null); }, [status, tone]);
+
+  const hasMain = hasHigh || hasLow || has(d.condition);
+  if (!has(d.city) && !has(d.date) && !hasMain && !hasRain && !has(d.tip)) {
+    return html`<${Empty} icon="☁" title="No weather data" />`;
+  }
+
+  return html`<${Card} title=${has(d.city) ? String(d.city) : undefined} subtitle=${has(d.date) ? String(d.date) : undefined}>
+    <div class="wx">
+      ${hasMain && html`<div class="wx-main">
+        ${(hasHigh || hasLow) && html`<div class="wx-temps">
+          <${Stat} value=${deg(hasHigh ? d.tempHigh : d.tempLow)} />
+          ${hasHigh && hasLow && html`<span class="wx-low">/ ${deg(d.tempLow)}</span>`}
+        </div>`}
+        ${hasRain && html`<div class="wx-rain-short">Rain ${pct}%</div>`}
+        ${has(d.condition) && html`<div class="wx-cond ccb-hide-narrow" title=${String(d.condition)}>${String(d.condition)}</div>`}
+      </div>`}
+      ${hasRain && html`<${Bar} class="ccb-hide-narrow ccb-hide-short" label="Rain" value=${pct} max=${100} valueText=${pct + '%'} tone=${pct >= 60 ? 'info' : 'neutral'} />`}
+      ${has(d.tip) && html`<div class="wx-tip ccb-hide-narrow ccb-hide-short" title=${String(d.tip)}>${String(d.tip)}</div>`}
+    </div>
+  <//>`;
+}
+
+render(html`<${Weather} />`, document.getElementById('app'));
+</script>

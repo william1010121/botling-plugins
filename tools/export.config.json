@@ -1,0 +1,118 @@
+{
+  "comment": "Which folders of the private plugin library go into this repo. Only what is listed here is copied (an allowlist). copyrightHolder/copyrightYear fill the MIT licence and the ccb-laas notice; licence texts are in tools/legal/.",
+  "copyrightYear": 2026,
+  "copyrightHolder": "Botling",
+  "skipNames": [
+    "node_modules",
+    "__pycache__",
+    ".DS_Store",
+    ".shipped.json",
+    ".git"
+  ],
+  "plugins": [
+    {
+      "from": "ccb-laas",
+      "to": "ccb-laas",
+      "license": "GPL-3.0-or-later",
+      "legal": {
+        "LICENSE": "GPL-3.0.txt",
+        "THIRD-PARTY-NOTICES.md": "ccb-laas-THIRD-PARTY-NOTICES.md",
+        "LICENSES/Apache-2.0.txt": "Apache-2.0.txt"
+      }
+    },
+    {
+      "from": "ccb-session-usage",
+      "to": "ccb-session-usage",
+      "license": "MIT",
+      "legal": {
+        "LICENSE": "MIT.txt"
+      }
+    },
+    {
+      "from": "ccb-web-extractors",
+      "to": "ccb-web-extractors",
+      "license": "MIT",
+      "legal": {
+        "LICENSE": "MIT.txt"
+      }
+    },
+    {
+      "from": "ccb-teams",
+      "to": "ccb-teams",
+      "license": "MIT",
+      "legal": {
+        "LICENSE": "MIT.txt"
+      },
+      "ref": "HEAD",
+      "comment": "The committed version (MIT), not the working tree."
+    },
+    {
+      "from": "ccb-components",
+      "to": "botling-components-basic",
+      "include": [
+        "components/architecture-topology",
+        "components/changelog",
+        "components/commit-log",
+        "components/component-kit",
+        "components/contribution-board",
+        "components/cpu-load",
+        "components/disk-usage-breakdown",
+        "components/engine-skills",
+        "components/git-diff",
+        "components/github-ci",
+        "components/memory-usage-analysis",
+        "components/multi-select",
+        "components/release-progress",
+        "components/script-image-card",
+        "components/versions-summary",
+        "components/weather-card",
+        "components/web-preview",
+        "scripts/contribution-board-json.py",
+        "scripts/cpu-load.py",
+        "scripts/disk-usage.py",
+        "scripts/engine-skills.py",
+        "scripts/git-log-json.py",
+        "scripts/git-show-detail.py",
+        "scripts/memory-usage.py",
+        "test/test_contribution_board.py"
+      ],
+      "skip": [
+        "components/script-image-card/cache"
+      ],
+      "packageJson": {
+        "name": "botling-components-basic",
+        "displayName": "Basic components",
+        "version": "1.0.0",
+        "description": "Generic cards for chats and the Board: commit log, git diff, GitHub CI, changelog, CPU, memory and disk usage, contribution board, architecture diagram, multi-select and more. Each card is a folder in components/ (template.html + about.md).",
+        "license": "MIT",
+        "engines": {
+          "ccb": "^2.0.0"
+        },
+        "ccb": {
+          "permissions": [],
+          "contributes": {
+            "components": "components"
+          }
+        }
+      },
+      "license": "MIT",
+      "legal": {
+        "LICENSE": "MIT.txt"
+      }
+    }
+  ],
+  "rewrites": [
+    {
+      "kind": "card command path (library folder renamed)",
+      "files": "botling-components-basic/components/*/about.md",
+      "pattern": "([\"']?)(?:~|/Users/[^/\\s\"']+)(?:/\\.claudecodebot/plugins|/Library/Application Support/Botling[^/\"']*/core/plugins)/ccb-components/([^\\s\"'`]+)\\1",
+      "replace": "\"$BOTLING_DATA_DIR/plugins/botling-components-basic/$2\""
+    },
+    {
+      "kind": "project-specific wording",
+      "files": "botling-components-basic/components/release-progress/about.md",
+      "pattern": "The Command runs in the ClaudeCodeBot project folder",
+      "replace": "The Command runs in the bot's project folder"
+    }
+  ]
+}

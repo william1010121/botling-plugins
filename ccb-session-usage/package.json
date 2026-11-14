@@ -1,0 +1,35 @@
+{
+  "name": "ccb-session-usage",
+  "displayName": "Session usage",
+  "version": "1.8.0",
+  "description": "A usage bar above the composer (Claude / Codex / Antigravity: context %, tokens and API-equivalent cost incl. subagents; click for a dense card). Cost is an estimate, not real billing.",
+  "license": "MIT",
+  "engines": {
+    "ccb": "^2.0.0"
+  },
+  "ccb": {
+    "permissions": [
+      "files"
+    ],
+    "web": "dist/web.js",
+    "host": "dist/host.mjs",
+    "contributes": {
+      "settings": {
+        "session-usage.folder": {
+          "type": "string",
+          "title": "Only sessions whose project folder contains (optional)",
+          "default": ""
+        }
+      },
+      "views": [
+        {
+          "id": "ccb-session-usage.bar",
+          "title": "Session usage",
+          "where": "composerBar",
+          "width": 360,
+          "forRole": "any"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,130 @@
+<meta name="ccb-kit" content="1">
+<style>
+  .cl { display:flex; flex-direction:column; gap:12px; min-width:0; }
+  .cl-head { font-size:16px; font-weight:600; line-height:1.4; overflow-wrap:anywhere; }
+  .cl-hero { display:flex; align-items:center; gap:14px; min-width:0; }
+  .cl-hero .ccb-stat { flex:none; }
+  .cl-hero .ccb-stat__value { font-size:34px; line-height:38px; white-space:nowrap; }
+  .cl-side { flex:1 1 auto; min-width:0; }
+  .cl-sec { display:flex; flex-direction:column; gap:6px; padding-top:10px; border-top:1px solid var(--line); }
+  .cl-loads { display:grid; grid-template-columns:repeat(auto-fit, minmax(96px, 1fr)); gap:8px; }
+  .cl-loads .ccb-stat__value { font-size:20px; line-height:24px; }
+  .cl-list { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:8px; }
+  .cl-proc { min-width:0; padding:8px 10px; border:1px solid var(--line); border-radius:10px; }
+  .cl-proc.warn { background:color-mix(in srgb, var(--orange) 10%, transparent); border-color:color-mix(in srgb, var(--orange) 45%, transparent); }
+  .cl-ph { display:flex; align-items:baseline; gap:8px; min-width:0; }
+  .cl-name { flex:1 1 auto; min-width:0; font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .cl-badge { flex:none; padding:1px 6px; border-radius:6px; font-size:11px; font-weight:600; color:var(--orange-text); border:1px solid color-mix(in srgb, var(--orange) 45%, transparent); }
+  .cl-val { flex:none; font-size:13px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .cl-track { position:relative; height:6px; margin-top:6px; border-radius:3px; background:var(--chip); overflow:hidden; }
+  .cl-fill { height:100%; border-radius:3px; transition:width .4s ease; }
+  .cl-tick { position:absolute; top:0; bottom:0; width:2px; background:var(--muted); opacity:.7; }
+  .cl-note { margin-top:6px; font-size:12px; line-height:1.45; color:var(--muted); overflow-wrap:anywhere; }
+  .cl-next { padding:9px 11px; border-radius:10px; font-size:13px; line-height:1.5; overflow-wrap:anywhere; background:color-mix(in srgb, var(--blue) 12%, transparent); border:1px solid color-mix(in srgb, var(--blue) 35%, transparent); }
+  .cl-next b { color:var(--blue); font-weight:600; margin-right:6px; }
+  .cl-ok { color:var(--green); } .cl-warn { color:var(--orange-text); } .cl-bad { color:var(--error); } .cl-neutral { color:var(--muted); }
+  .cl-fill.cl-ok { background:var(--green); } .cl-fill.cl-warn { background:var(--orange); } .cl-fill.cl-bad { background:var(--error); } .cl-fill.cl-neutral { background:var(--muted); }
+  .cl-tiny { height:100%; display:flex; flex-direction:column; justify-content:center; }
+  .cl-tiny .ccb-stat__value { font-size:44px; line-height:48px; white-space:nowrap; }
+
+  @container ccb (max-width: 380px) { .cl-hero .ccb-stat__value { font-size:30px; line-height:34px; } .cl-list { grid-template-columns:1fr; } }
+  /* short: summary + top processes only; shorter: no headline; one row: only the CPU bar */
+  @container (max-height: 460px) { .cl-loads-sec, .cl-next, .cl-note { display:none; } .cl-proc:nth-child(n+4) { display:none; } .cl-sec { padding-top:8px; } .cl { gap:8px; } }
+  @container (max-height: 340px) { .cl-head { display:none; } }
+  @container (max-height: 210px) { .cl-procs { display:none; } }
+</style>
+<div id="app"></div>
+<script>
+const { html, render, useData, useSize, useSurface, useEffect, Card, Stat, Bar, Empty } = ccb.kit;
+
+const num = (v) => { if (typeof v === 'string') v = parseFloat(v); return (typeof v === 'number' && isFinite(v)) ? v : null; };
+const fmt = (v) => (Math.round(v * 10) / 10).toString();
+const clamp = (p) => Math.max(0, Math.min(100, p));
+// Thresholds: below 60 ok, below 85 warn, 85 and above bad.
+const toneOf = (p) => (p === null ? 'neutral' : (p < 60 ? 'ok' : (p < 85 ? 'warn' : 'bad')));
+const ratioTone = (r) => (r === null ? 'neutral' : (r < 1 ? 'ok' : (r < 2 ? 'warn' : 'bad')));
+const LOAD_NAMES = ['1 min', '5 min', '15 min'];
+
+function LoadAvg({ load, cores }) {
+  return html`<div class="cl-sec cl-loads-sec">
+    <div class="ccb-label">${'Load average' + (cores ? ' (' + fmt(cores) + ' cores)' : '')}</div>
+    <div class="cl-loads">${load.map((v, i) => {
+      const ratio = cores ? v / cores : null;
+      return html`<${Stat} key=${i} framed label=${LOAD_NAMES[i]} value=${fmt(v)} tone=${ratioTone(ratio)} detail=${ratio === null ? undefined : '~' + fmt(ratio) + 'x core count'} />`;
+    })}</div>
+  </div>`;
+}
+
+function Proc({ p, max }) {
+  const v = num(p.cpu);
+  const tone = toneOf(v);
+  const warn = p.flag === 'warn';
+  const name = p.name ? String(p.name) : '(unnamed)';
+  return html`<div class=${'cl-proc' + (warn ? ' warn' : '')}>
+    <div class="cl-ph">
+      <span class="cl-name" title=${name}>${name}</span>
+      ${warn && html`<span class="cl-badge">Warn</span>`}
+      <span class=${'cl-val cl-' + tone}>${v === null ? '–' : fmt(v) + '%'}</span>
+    </div>
+    ${v !== null && html`<div class="cl-track">
+      <div class=${'cl-fill cl-' + tone} style=${{ width: clamp(v / max * 100) + '%' }}></div>
+      ${max > 100 && html`<div class="cl-tick" style=${{ left: (100 / max * 100) + '%' }}></div>`}
+    </div>`}
+    ${p.note && html`<div class="cl-note">${String(p.note)}</div>`}
+  </div>`;
+}
+
+function Processes({ procs }) {
+  let max = 100;
+  procs.forEach((p) => { const v = num(p.cpu); if (v !== null && v > max) max = v; });
+  return html`<div class="cl-sec cl-procs">
+    <div class="ccb-label">${'Top CPU processes (' + procs.length + ')'}</div>
+    <div class="cl-list">${procs.map((p, i) => html`<${Proc} key=${i} p=${p} max=${max} />`)}</div>
+  </div>`;
+}
+
+function CpuLoad() {
+  const raw = useData();
+  const size = useSize();
+  const surface = useSurface();
+  const d = raw && typeof raw === 'object' ? raw : {};
+
+  const cpu = num(d.cpuPercent);
+  const cores = num(d.cores);
+  const load = Array.isArray(d.loadAvg) ? d.loadAvg.map(num).filter((x) => x !== null).slice(0, 3) : [];
+  const procs = (Array.isArray(d.processes) ? d.processes : []).filter((p) => p && typeof p === 'object');
+  const headline = d.headline ? String(d.headline) : '';
+  const next = d.nextStep ? String(d.nextStep) : '';
+
+  // Chip: "CPU 83%", green/orange/red by the thresholds; cleared with no cpuPercent.
+  const chip = cpu === null ? '' : 'CPU ' + Math.round(cpu) + '%';
+  const chipTone = cpu === null ? 'neutral' : (cpu < 60 ? 'good' : (cpu < 85 ? 'warning' : 'bad'));
+  useEffect(() => { ccb.setStatus(chip ? { text: chip, tone: chipTone } : null); }, [chip, chipTone]);
+
+  const px = size.px || {};
+  const tiny = px.width <= 190 || (surface !== 'chat' && px.height <= 175 && px.width <= 260);
+  if (tiny) {
+    return html`<${Card}><div class="cl-tiny"><${Stat} label="CPU" value=${cpu === null ? '–' : fmt(cpu)} unit=${cpu === null ? undefined : '%'} tone=${toneOf(cpu)} /></div><//>`;
+  }
+
+  const has = cpu !== null || load.length || procs.length || headline || next;
+  if (!has) return html`<${Card} title="CPU Load Diagnosis"><${Empty} title="No data yet" /><//>`;
+
+  const tone = toneOf(cpu);
+  const status = cpu === null ? '' : (cpu < 60 ? 'Normal' : (cpu < 85 ? 'High' : 'Very high'));
+  return html`<${Card} title="CPU Load Diagnosis">
+    <div class="cl">
+      ${headline && html`<div class="cl-head">${headline}</div>`}
+      ${cpu !== null && html`<div class="cl-hero">
+        <${Stat} value=${fmt(cpu)} unit="%" tone=${tone} />
+        <div class="cl-side"><${Bar} label="CPU usage" value=${clamp(cpu)} max=${100} valueText=${status} tone=${tone} /></div>
+      </div>`}
+      ${load.length > 0 && html`<${LoadAvg} load=${load} cores=${cores} />`}
+      ${procs.length > 0 && html`<${Processes} procs=${procs} />`}
+      ${next && html`<div class="cl-next"><b>Next step</b>${next}</div>`}
+    </div>
+  <//>`;
+}
+
+render(html`<${CpuLoad} />`, document.getElementById('app'));
+</script>

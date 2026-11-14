@@ -1,0 +1,596 @@
+<meta name="ccb-kit" content="1">
+<style>
+  html, body { margin: 0; padding: 0; background: transparent; }
+  .topo-root, .topo-root * { box-sizing: border-box; }
+  .topo-root {
+    --bg-canvas: #0d1017;
+    --bg-lane: #11151f;
+    --bg-card: #171c28;
+    --border-subtle: #1e2433;
+    --border-card: #2c3548;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --accent-blue: #3b82f6;
+    --accent-sky: #38bdf8;
+    --title: #fff;
+    --btn-bg: #1e2638; --btn-text: #f8fafc; --btn-border: #334155; --btn-hover: #60a5fa;
+    --lane-stroke: #1e2636; --badge-bg: #182030; --badge-stroke: #283248; --lane-label: #94a3b8;
+    --wire-sky: #38bdf8; --wire-blue: #60a5fa; --wire-slate: #64748b; --wire-flow: #93c5fd;
+    --label-bg: #0b0e14; --label-stroke: #242c3d; --label-text: #cbd5e1;
+    --node-stroke: var(--node-stroke); --hub-stroke: #3b82f6; --hub-glow: rgba(59,130,246,.22);
+    --hover-stroke: #60a5fa; --hover-glow: rgba(59,130,246,.28);
+    --node-title: #fff; --node-sub: #cbd5e1; --node-meta: #94a3b8;
+    --tag-bg: #111622; --tag-stroke: #2d3748; --tag-blue-bg: rgba(37,99,235,.22); --tag-blue-stroke: rgba(96,165,250,.5);
+    --tag-text: #cbd5e1; --tag-blue-text: #93c5fd;
+    --grad-a1: #1c2230; --grad-a2: #141822; --hub-a1: #172542; --hub-a2: #111a2e;
+    --ins-border: #2e3a52; --ins-badge: #2563eb; --code-text: #93c5fd; --code-bg: rgba(15,23,42,.75); --code-border: #263248;
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", system-ui, sans-serif;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .topo-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  html[data-theme="light"] .topo-root {
+    --bg-canvas: #f6f8fc; --bg-lane: #eaeff7; --bg-card: #ffffff;
+    --border-subtle: #dde3ee; --border-card: #d3dae8;
+    --text-primary: #1b2230; --text-secondary: #5a6577;
+    --title: #111827;
+    --btn-bg: #ffffff; --btn-text: #1b2230; --btn-border: #c6cfde; --btn-hover: #2563eb;
+    --lane-stroke: #cfd7e6; --badge-bg: #ffffff; --badge-stroke: #c6cfde; --lane-label: #4b5567;
+    --wire-sky: #0284c7; --wire-blue: #2563eb; --wire-slate: #6b7788; --wire-flow: #1d4ed8;
+    --label-bg: #ffffff; --label-stroke: #cfd7e6; --label-text: #334155;
+    --node-stroke: #b9c4d8; --hub-stroke: #2563eb; --hub-glow: rgba(37,99,235,.18);
+    --hover-stroke: #2563eb; --hover-glow: rgba(37,99,235,.22);
+    --node-title: #111827; --node-sub: #334155; --node-meta: #5a6577;
+    --tag-bg: #eef2f8; --tag-stroke: #cbd4e3; --tag-blue-bg: rgba(37,99,235,.10); --tag-blue-stroke: rgba(37,99,235,.45);
+    --tag-text: #334155; --tag-blue-text: #1d4ed8;
+    --grad-a1: #ffffff; --grad-a2: #f1f4fa; --hub-a1: #e8f0ff; --hub-a2: #dbe7fb;
+    --ins-border: #c6cfde; --code-text: #1d4ed8; --code-bg: rgba(37,99,235,.07); --code-border: #cfd7e6;
+  }
+  .topo-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--title);
+    margin: 0;
+  }
+  .topo-sub {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 2px 0 0;
+  }
+  .topo-reset {
+    background: var(--btn-bg);
+    color: var(--btn-text);
+    border: 1px solid var(--btn-border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 11.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .topo-reset:hover { border-color: var(--btn-hover); }
+  .topo-canvas {
+    background: var(--bg-canvas);
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    padding: 14px;
+    overflow-x: auto;
+  }
+  svg.topo-svg {
+    width: 100%;
+    min-width: 860px;
+    height: auto;
+    display: block;
+    user-select: none;
+  }
+  .lane-box { fill: var(--bg-lane); stroke: var(--lane-stroke); stroke-width: 1.2; }
+  .lane-badge { fill: var(--badge-bg); stroke: var(--badge-stroke); stroke-width: 1; }
+  .lane-title {
+    fill: var(--lane-label);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    font-family: "SF Mono", ui-monospace, monospace;
+  }
+  .wire { fill: none; stroke-width: 1.75; transition: opacity 0.2s, stroke-width 0.2s; }
+  .wire-primary { stroke: var(--wire-sky); }
+  .wire-core { stroke: var(--wire-blue); }
+  .wire-async { stroke: var(--wire-slate); stroke-dasharray: 5 4; }
+  .wire-flow {
+    fill: none;
+    stroke: var(--wire-flow);
+    stroke-width: 2;
+    stroke-dasharray: 4 28;
+    stroke-linecap: round;
+    animation: topoFlow 2.2s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes topoFlow { to { stroke-dashoffset: -32; } }
+  .wire-label-bg { fill: var(--label-bg); stroke: var(--label-stroke); stroke-width: 1; rx: 5; }
+  .wire-label-text {
+    fill: var(--label-text);
+    font-size: 10.5px;
+    font-weight: 500;
+    text-anchor: middle;
+    dominant-baseline: central;
+  }
+  .arch-node { cursor: pointer; transition: opacity 0.2s; }
+  .arch-node .node-rect {
+    fill: url(#topo-card-grad);
+    stroke: var(--node-stroke);
+    stroke-width: 1.4;
+    transition: stroke 0.2s, stroke-width 0.2s, filter 0.2s;
+  }
+  .arch-node.node-hub .node-rect {
+    fill: url(#topo-hub-grad);
+    stroke: var(--hub-stroke);
+    stroke-width: 2;
+    filter: drop-shadow(0 0 14px var(--hub-glow));
+  }
+  .arch-node:hover .node-rect,
+  .arch-node.active .node-rect {
+    stroke: var(--hover-stroke);
+    stroke-width: 2.2;
+    filter: drop-shadow(0 4px 14px var(--hover-glow));
+  }
+  .node-title { fill: var(--node-title); font-size: 13px; font-weight: 700; }
+  .node-subtitle { fill: var(--node-sub); font-size: 11px; font-weight: 500; }
+  .node-meta { fill: var(--node-meta); font-size: 10.5px; }
+  .node-tag-bg { fill: var(--tag-bg); stroke: var(--tag-stroke); stroke-width: 1; }
+  .node-tag-bg-blue { fill: var(--tag-blue-bg); stroke: var(--tag-blue-stroke); stroke-width: 1; }
+  .node-tag-text { fill: var(--tag-text); font-size: 9.5px; font-family: "SF Mono", ui-monospace, monospace; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+  .node-tag-text-blue { fill: var(--tag-blue-text); font-size: 9.5px; font-family: "SF Mono", ui-monospace, monospace; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+  .canvas-focused .arch-node:not(.highlight),
+  .canvas-focused .wire-group:not(.highlight) { opacity: 0.22; }
+  .canvas-focused .wire-group.highlight .wire { stroke-width: 2.4; }
+  .topo-inspector {
+    background: var(--bg-lane);
+    border: 1px solid var(--ins-border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .ins-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ins-badge {
+    background: var(--ins-badge);
+    color: #fff;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 5px;
+    font-family: "SF Mono", ui-monospace, monospace;
+  }
+  .ins-title { font-size: 15px; font-weight: 700; color: var(--title); margin: 0; }
+  .ins-desc { font-size: 12.5px; color: var(--text-secondary); margin: 0; line-height: 1.5; }
+  .ins-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 10px;
+  }
+  .ins-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .ins-card-title { font-size: 13px; font-weight: 700; color: var(--title); }
+  .ins-card-body { font-size: 12px; color: var(--text-secondary); line-height: 1.45; margin-top: 4px; }
+  .ins-card-code {
+    font-family: "SF Mono", ui-monospace, monospace;
+    font-size: 11px;
+    color: var(--code-text);
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    padding: 4px 8px;
+    border-radius: 5px;
+    word-break: break-all;
+  }
+</style>
+
+<div id="app"></div>
+
+<script>
+(function () {
+  // 支援在 Botling ccb-components 環境 (window.ccb) 與獨立瀏覽器環境雙棲運作
+  const DEFAULT_SPEC = {
+    title: "Botling 2.0 系統架構拓撲圖",
+    subtitle: "點擊任一節點高亮關聯通訊線路並展開內部原始碼細節",
+    layers: [
+      { id: "l1", title: "01 · 介面與雙軌渲染層 (CLIENT & PRESENTATION)" },
+      { id: "l2", title: "02 · 核心調度與守護中樞 (CORE SUPERVISOR HUB)" },
+      { id: "l3", title: "03 · BOT 角色與多頭執行引擎 (BOT ROLES & MULTI-HEAD ENGINES)" },
+      { id: "l4", title: "04 · 本地持久化與產物儲存層 (DURABLE STORAGE)" }
+    ],
+    nodes: [
+      {
+        id: "desktop-ui", layer: "l1", span: 2,
+        title: "🖥️ macOS Electron 桌面端 + 雙軌沙盒呈現層", tag: "Dual-Surface UI",
+        subtitle: "ChatFrame (botling-chat:// 沙盒) ＋ NativeEditorView (原生輸入法浮層)",
+        meta: "左側欄 Bot 清單 · Whiteboard 白板 · ReportViewer (文件 / 16:9 簡報瞬切)",
+        desc: "將對話渲染隔離於安全沙盒 iframe，同時以獨立 WebContentsView 承載原生輸入框，徹底解決 Electron 中文輸入法候選字閃退問題。",
+        subcomponents: [
+          { name: "ChatFrame 沙盒畫布", code: "desktop/src/renderer/chat-frame/", body: "獨立自訂協議安全隔離渲染 Markdown、KaTeX 與互動元件。" },
+          { name: "NativeEditorView 原生輸入宿主", code: "desktop/src/main/editor-host.ts", body: "獨立掛載的 WebContentsView 浮層，確保 macOS 注音/拼音輸入零延遲。" },
+          { name: "ReportViewer 雙模檢視器", code: "desktop/src/renderer/ReportViewer.tsx", body: "支援規格文件與 16:9 簡報無縫切換。" }
+        ]
+      },
+      {
+        id: "mobile-ui", layer: "l1", span: 1,
+        title: "📱 行動端 Safari PWA 抽屜", tag: "iOS Web",
+        subtitle: "iPhone Safari 遠端監控與跨專案切換",
+        meta: "支援離線快取 · 遠端權限審批 · 緊急指令派發",
+        desc: "專為 iPhone Safari 打造的行動端介面，使用者可在手機上無縫切換所有 Bot、檢視規格報告並回應權限審批。",
+        subcomponents: [
+          { name: "跨專案 Bot 抽屜切換器", code: "desktop/src/mobile-bridge/", body: "即時同步桌面端所有活躍中的 Bot 狀態。" }
+        ]
+      },
+      {
+        id: "core-server", layer: "l2", span: 2, hub: true,
+        title: "🧠 Core Server (Node.js 核心守護程序)", tag: "CENTRAL BRAIN",
+        subtitle: "Bot 生命週期 · 權限審批 (Approval) · Conductor 多頭仲裁 (heads.ts)",
+        meta: "支援 Core Swap ({ botling: \"drain\" }) 零中斷熱升級，獨立於 UI 崩潰之外",
+        desc: "作為獨立 Node utilityProcess 運行，負責 Bot 角色語境管理、Conductor 多頭引擎搶佔仲裁，以及零中斷熱升級。",
+        subcomponents: [
+          { name: "Conductor 多頭協作仲裁器", code: "desktop/src/core/heads.ts", body: "管理 Claude、Codex、agy 之間的 claimLead 搶佔與 <handoff> 交接。" },
+          { name: "Core Swap 零中斷熱替換", code: "desktop/src/main/core-swap.ts", body: "發送 drain 停靠舊進程並在內存移交 MessagePort，升級過程對話不斷線。" }
+        ]
+      },
+      {
+        id: "mobile-bridge", layer: "l2", span: 1,
+        title: "🌐 Mobile Bridge & Relay", tag: "Zero-IPC",
+        subtitle: "Google OAuth 2.0 PKCE · 安全 Token 交換",
+        meta: "內嵌於 Core 進程內存，直通調度不繞經桌面 UI",
+        desc: "直接內嵌於 Core Server 進程內存中的行動端閘道器，直接與 Core 共享內存狀態，實現零延遲遠端控制。",
+        subcomponents: [
+          { name: "OAuth 2.0 PKCE 認證端點", code: "desktop/src/mobile-bridge/auth.ts", body: "採用 PKCE 標準流程，杜絕憑證攔截風險。" },
+          { name: "MobileAccess 內存直通層", code: "desktop/src/mobile-bridge/bridge.ts", body: "直接呼叫 Core 內部方法，桌面 UI 休眠時依然暢通。" }
+        ]
+      },
+      {
+        id: "main-bot", layer: "l3", span: 1,
+        title: "🤖 Main Bot (主窗口)", tag: "Claude/Codex/agy",
+        subtitle: "可自由指定任一引擎或雙頭協作",
+        meta: "全域跨專案總覽 · 長文規劃 · 報告撰寫",
+        desc: "全域主窗口，不綁定單一模型，可自由切換 Claude、Codex、agy 或開啟雙頭模式 (Both)。",
+        subcomponents: [
+          { name: "Multi-Head 自由掛載", code: "desktop/src/core/heads.ts", body: "每個 Bot 皆可獨立配置 engines 與 answerWith。" }
+        ]
+      },
+      {
+        id: "pm-bot", layer: "l3", span: 1,
+        title: "📁 Project Manager", tag: "Claude/Codex/agy",
+        subtitle: "專責專案資料夾 · 雙頭接力與互審",
+        meta: "支援 claimLead 搶佔與 <handoff> 交接",
+        desc: "綁定特定程式碼資料夾的專案 Bot，支援在同一聊天室中同時運行 Claude 與 Codex / agy 互審協作。",
+        subcomponents: [
+          { name: "同室雙頭協作", code: "desktop/src/core/agent/head.ts · codex.ts", body: "Claude 與 Codex 共享對話並自動交接互審。" },
+          { name: "ReportSpec v2 編譯器", code: "desktop/reports/v2/", body: "內建 ASD-STE100 語義檢查與狀態自動推論。" }
+        ]
+      },
+      {
+        id: "teams-workers", layer: "l3", span: 1,
+        title: "👥 Subagents & Plugin Host", tag: "Workers",
+        subtitle: "平行 Subagents · Codex Workers · 外掛宿主",
+        meta: "背景平行攻堅 · 隔離執行外掛 Hooks",
+        desc: "支援派生平行 Subagent / Codex Worker 同時攻堅，並透過獨立 Plugin Host 進程隔離執行第三方外掛。",
+        subcomponents: [
+          { name: "Plugin Host 隔離宿主", code: "Web/host/src/host.ts", body: "獨立 Node 子進程執行 beforeSend / afterReply 鉤子。" }
+        ]
+      },
+      {
+        id: "storage-memory", layer: "l4", span: 1,
+        title: "📄 .bot/memory.md",
+        subtitle: "≤150 行核心熱記憶",
+        meta: "固定 4 區塊 · writeFileAtomic",
+        desc: "嚴格限制 ≤150 行，固定分為 Profile / Constraints / WIP / Decisions 四區塊。",
+        subcomponents: [
+          { name: "writeFileAtomic 原子寫入", code: "desktop/src/core/durable/atomic.ts", body: "臨時檔 + fsync + rename 確保斷電零損毀。" }
+        ]
+      },
+      {
+        id: "storage-archive", layer: "l4", span: 1,
+        title: "🗄️ .bot/archive/*.md",
+        subtitle: "逐月歷史對話冷封存",
+        meta: "不注入常態 Prompt · Grep 檢索",
+        desc: "歷史細節按月歸檔於硬碟，常態對話不載入以節省 Token。",
+        subcomponents: []
+      },
+      {
+        id: "storage-plugins", layer: "l4", span: 1,
+        title: "🔌 ~/.claudecodebot/",
+        subtitle: "plugins/ 外掛 Git 倉庫",
+        meta: "支援 Manifest 校驗與熱重載",
+        desc: "Botling 監聽外掛目錄變更並即時熱重載。",
+        subcomponents: []
+      },
+      {
+        id: "storage-artifacts", layer: "l4", span: 1,
+        title: "📊 .bot/artifacts/",
+        subtitle: "ReportSpec v2 產物庫",
+        meta: "ASD-STE100 報告與 16:9 簡報",
+        desc: "存放編譯完成的雙視圖 HTML 報告與 16:9 簡報。",
+        subcomponents: []
+      }
+    ],
+    edges: [
+      { from: "desktop-ui", to: "core-server", label: "Protocol v10 IPC", kind: "core" },
+      { from: "core-server", to: "desktop-ui", label: "狀態推播 / Token 串流", kind: "async", offset: 140 },
+      { from: "mobile-ui", to: "mobile-bridge", label: "WSS / OAuth PKCE", kind: "primary" },
+      { from: "mobile-bridge", to: "core-server", label: "內存直通呼叫", kind: "core" },
+      { from: "core-server", to: "main-bot", label: "多頭調度 (Claude/Codex/agy)", kind: "core" },
+      { from: "core-server", to: "pm-bot", label: "Conductor 雙頭互審與交接", kind: "core" },
+      { from: "core-server", to: "teams-workers", label: "Subagent 派工 / Hooks", kind: "primary" },
+      { from: "main-bot", to: "pm-bot", label: "跨專案派工", kind: "primary" },
+      { from: "pm-bot", to: "teams-workers", label: "派發 Worker", kind: "primary" },
+      { from: "main-bot", to: "storage-memory", label: "同步 4 區塊", kind: "async" },
+      { from: "pm-bot", to: "storage-archive", label: "冷資料封存", kind: "async" },
+      { from: "pm-bot", to: "storage-artifacts", label: "report.mjs 輸出", kind: "primary" },
+      { from: "teams-workers", to: "storage-plugins", label: "--plugin-dir 熱重載", kind: "async" }
+    ]
+  };
+
+  function parseSpec(raw) {
+    if (!raw) return DEFAULT_SPEC;
+    let obj = raw;
+    if (typeof raw === "string") {
+      try { obj = JSON.parse(raw); } catch { return DEFAULT_SPEC; }
+    }
+    if (!obj || typeof obj !== "object" || !Array.isArray(obj.layers) || !Array.isArray(obj.nodes)) {
+      return DEFAULT_SPEC;
+    }
+    return obj;
+  }
+
+  // 自動計算 2D 泳道座標與正交連線路由 (Bot 只需要給 JSON，不需要手算 x, y 座標！)
+  function computeLayout(spec) {
+    const W = 1100;
+    const LANE_X = 20;
+    const LANE_W = W - 40;
+    const LANE_H = 138;
+    const LANE_GAP = 42;
+    const NODE_H = 84;
+    const PAD_X = 28;
+
+    const placedNodes = new Map();
+    const lanes = spec.layers.map((layer, idx) => {
+      const y = 30 + idx * (LANE_H + LANE_GAP);
+      const layerNodes = spec.nodes.filter(n => n.layer === layer.id);
+      const totalSpan = layerNodes.reduce((acc, n) => acc + (n.span || 1), 0) || 1;
+      const gap = 24;
+      const availW = LANE_W - PAD_X * 2 - gap * Math.max(0, layerNodes.length - 1);
+
+      let curX = LANE_X + PAD_X;
+      layerNodes.forEach(n => {
+        const span = n.span || 1;
+        const nw = Math.round((availW * span) / totalSpan);
+        const ny = y + 34;
+        placedNodes.set(n.id, {
+          ...n,
+          x: curX,
+          y: ny,
+          w: nw,
+          h: NODE_H,
+          cx: Math.round(curX + nw / 2),
+          cy: Math.round(ny + NODE_H / 2)
+        });
+        curX += nw + gap;
+      });
+
+      return { ...layer, x: LANE_X, y, w: LANE_W, h: LANE_H };
+    });
+
+    const totalH = 30 + lanes.length * (LANE_H + LANE_GAP) - LANE_GAP + 24;
+
+    const placedEdges = (spec.edges || []).map(e => {
+      const a = placedNodes.get(e.from);
+      const b = placedNodes.get(e.to);
+      if (!a || !b) return null;
+
+      let d = "";
+      let lx = 0, ly = 0;
+      const sameRow = Math.abs(a.y - b.y) < 20;
+
+      if (sameRow) {
+        const leftToRight = a.x < b.x;
+        const x1 = leftToRight ? a.x + a.w : a.x;
+        const x2 = leftToRight ? b.x : b.x + b.w;
+        const y = a.cy + (e.offset || 0);
+        d = `M ${x1} ${y} L ${x2} ${y}`;
+        lx = Math.round((x1 + x2) / 2);
+        ly = y - 16;
+      } else {
+        const down = a.y < b.y;
+        const shift = e.offset || 0;
+        const x1 = a.cx + shift;
+        const y1 = down ? a.y + a.h : a.y;
+        const x2 = b.cx + shift;
+        const y2 = down ? b.y : b.y + b.h;
+        const midY = Math.round((y1 + y2) / 2);
+
+        if (Math.abs(x1 - x2) < 12) {
+          d = `M ${x1} ${y1} L ${x1} ${y2}`;
+          lx = x1;
+          ly = midY;
+        } else {
+          d = `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`;
+          lx = Math.round((x1 + x2) / 2);
+          ly = midY;
+        }
+      }
+
+      const lw = Math.max(76, (e.label ? e.label.length * 10 + 22 : 80));
+      return { ...e, d, lx, ly, lw };
+    }).filter(Boolean);
+
+    return { w: W, h: totalH, lanes, nodes: [...placedNodes.values()], edges: placedEdges };
+  }
+
+  function esc(s) {
+    return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function renderTopology(root, rawData) {
+    const spec = parseSpec(rawData);
+    const layout = computeLayout(spec);
+    let selectedId = (spec.nodes.find(n => n.hub) || spec.nodes[0] || {}).id;
+    let focused = false;
+
+    function update() {
+      const activeNode = spec.nodes.find(n => n.id === selectedId) || spec.nodes[0] || {};
+      const connectedNodes = new Set([selectedId]);
+      const connectedEdges = new Set();
+
+      layout.edges.forEach((e, idx) => {
+        if (e.from === selectedId || e.to === selectedId) {
+          connectedEdges.add(idx);
+          connectedNodes.add(e.from);
+          connectedNodes.add(e.to);
+        }
+      });
+
+      const lanesSvg = layout.lanes.map(l => {
+        const bw = Math.min(460, Math.max(240, l.title.length * 9.5 + 28));
+        return `
+          <rect x="${l.x}" y="${l.y}" width="${l.w}" height="${l.h}" rx="14" class="lane-box" />
+          <rect x="${l.x + 16}" y="${l.y - 11}" width="${bw}" height="22" rx="6" class="lane-badge" />
+          <text x="${l.x + 28}" y="${l.y + 4}" class="lane-title">${esc(l.title)}</text>
+        `;
+      }).join("");
+
+      const edgesSvg = layout.edges.map((e, idx) => {
+        const isHi = focused && connectedEdges.has(idx);
+        const kindCls = e.kind === "async" ? "wire-async" : (e.kind === "core" ? "wire-core" : "wire-primary");
+        const marker = e.kind === "async" ? "url(#topo-arrow-slate)" : (e.kind === "core" ? "url(#topo-arrow-blue)" : "url(#topo-arrow-sky)");
+        return `
+          <g class="wire-group ${isHi ? "highlight" : ""}">
+            <path d="${e.d}" class="wire ${kindCls}" marker-end="${marker}" />
+            ${e.kind !== "async" ? `<path d="${e.d}" class="wire-flow" />` : ""}
+            ${e.label ? `
+              <rect x="${e.lx - e.lw / 2}" y="${e.ly - 10}" width="${e.lw}" height="20" class="wire-label-bg" />
+              <text x="${e.lx}" y="${e.ly}" class="wire-label-text">${esc(e.label)}</text>
+            ` : ""}
+          </g>
+        `;
+      }).join("");
+
+      const nodesSvg = layout.nodes.map(n => {
+        const isHi = focused && connectedNodes.has(n.id);
+        const isAct = focused && n.id === selectedId;
+        const tagW = n.tag ? Math.max(68, n.tag.length * 7.2 + 16) : 0;
+        return `
+          <g class="arch-node ${n.hub ? "node-hub" : ""} ${isAct ? "active" : ""} ${isHi ? "highlight" : ""}" data-node-id="${esc(n.id)}" transform="translate(${n.x}, ${n.y})">
+            <rect width="${n.w}" height="${n.h}" rx="12" class="node-rect" />
+            <text x="16" y="26" class="node-title">${esc(n.title)}</text>
+            ${n.tag ? `
+              <rect x="${n.w - tagW - 12}" y="11" width="${tagW}" height="19" rx="5" class="${n.hub ? "node-tag-bg-blue" : "node-tag-bg"}" />
+              <text x="${n.w - tagW / 2 - 12}" y="20.5" class="${n.hub ? "node-tag-text-blue" : "node-tag-text"}">${esc(n.tag)}</text>
+            ` : ""}
+            ${n.subtitle ? `<text x="16" y="48" class="node-subtitle">${esc(n.subtitle)}</text>` : ""}
+            ${n.meta ? `<text x="16" y="68" class="node-meta">${esc(n.meta)}</text>` : ""}
+          </g>
+        `;
+      }).join("");
+
+      const subcardsHtml = (activeNode.subcomponents || []).map(sc => `
+        <div class="ins-card">
+          <div>
+            <div class="ins-card-title">${esc(sc.name)}</div>
+            <div class="ins-card-body">${esc(sc.body)}</div>
+          </div>
+          ${sc.code ? `<div class="ins-card-code">📂 ${esc(sc.code)}</div>` : ""}
+        </div>
+      `).join("");
+
+      root.innerHTML = `
+        <div class="topo-root">
+          <div class="topo-header">
+            <div>
+              <h2 class="topo-title">${esc(spec.title || "系統架構拓撲圖")}</h2>
+              <p class="topo-sub">${esc(spec.subtitle || "點擊任一節點高亮關聯線路並展開內部細節")}</p>
+            </div>
+            <button type="button" class="topo-reset" id="topo-reset-btn">顯示全部連線</button>
+          </div>
+
+          <div class="topo-canvas">
+            <svg class="topo-svg ${focused ? "canvas-focused" : ""}" viewBox="0 0 ${layout.w} ${layout.h}" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <marker id="topo-arrow-sky" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--wire-sky)" />
+                </marker>
+                <marker id="topo-arrow-blue" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--wire-blue)" />
+                </marker>
+                <marker id="topo-arrow-slate" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--wire-slate)" />
+                </marker>
+                <linearGradient id="topo-card-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" style="stop-color:var(--grad-a1)" />
+                  <stop offset="100%" style="stop-color:var(--grad-a2)" />
+                </linearGradient>
+                <linearGradient id="topo-hub-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" style="stop-color:var(--hub-a1)" />
+                  <stop offset="100%" style="stop-color:var(--hub-a2)" />
+                </linearGradient>
+              </defs>
+              ${lanesSvg}
+              ${edgesSvg}
+              ${nodesSvg}
+            </svg>
+          </div>
+
+          <div class="topo-inspector">
+            <div class="ins-head">
+              <span class="ins-badge">${esc(activeNode.tag || "COMPONENT")}</span>
+              <h3 class="ins-title">${esc(activeNode.title || "")}</h3>
+            </div>
+            <p class="ins-desc">${esc(activeNode.desc || activeNode.subtitle || "")}</p>
+            ${subcardsHtml ? `<div class="ins-grid">${subcardsHtml}</div>` : ""}
+          </div>
+        </div>
+      `;
+
+      root.querySelectorAll(".arch-node").forEach(el => {
+        el.addEventListener("click", () => {
+          selectedId = el.getAttribute("data-node-id");
+          focused = true;
+          update();
+        });
+      });
+
+      const resetBtn = root.querySelector("#topo-reset-btn");
+      if (resetBtn) {
+        resetBtn.addEventListener("click", () => {
+          focused = false;
+          update();
+        });
+      }
+    }
+
+    update();
+  }
+
+  const mount = document.getElementById("app");
+  if (window.ccb && typeof window.ccb.onData === "function") {
+    renderTopology(mount, window.ccb.data);
+    window.ccb.onData(data => renderTopology(mount, data));
+  } else {
+    renderTopology(mount, window.ARCH_SPEC || DEFAULT_SPEC);
+  }
+})();
+</script>

@@ -1,0 +1,106 @@
+<meta name="ccb-kit" content="1">
+<style>
+  :root { --es-line:var(--line); --es-muted:var(--muted); --es-text:var(--text); --es-blue:var(--blue); --es-green:var(--green); --es-orange:var(--orange-text); --es-red:var(--error); }
+  * { box-sizing:border-box; }
+  body { margin:0; }
+  .card { border:0; background:none; border-radius:0; padding:12px; color:var(--es-text); font-family:-apple-system,"PingFang TC",sans-serif; min-width:0; }
+  html[data-surface="board"] .card { height:100%; }
+  .es-full, .es-tiny { display:none; }
+  .es-full { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px,1fr)); gap:12px; align-items:start; height:100%; }
+  html[data-surface="board"] .es-full { align-content:start; overflow:auto; }
+  .es-col { min-width:0; border:1px solid var(--es-line); border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
+  .es-hd { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .es-eng { font-size:15px; font-weight:600; }
+  .es-badge { font-size:12px; color:var(--es-muted); font-variant-numeric:tabular-nums; }
+  .es-na { font-size:14px; color:var(--es-orange); padding:14px 0; }
+  details { border-top:1px solid var(--es-line); }
+  summary { min-height:44px; display:flex; align-items:center; gap:8px; cursor:pointer; list-style:none; font-size:13px; font-weight:600; user-select:none; border-radius:8px; transition:background .15s; }
+  summary::-webkit-details-marker { display:none; }
+  summary:hover { background:var(--hover); }
+  summary:active { background:var(--selected); }
+  summary::before { content:"▸"; color:var(--es-muted); width:12px; transition:transform .15s; }
+  details[open] > summary::before { transform:rotate(90deg); }
+  .es-n { margin-left:auto; color:var(--es-muted); font-weight:500; font-variant-numeric:tabular-nums; }
+  .es-list { display:flex; flex-direction:column; gap:6px; padding:0 0 10px 20px; max-height:300px; overflow:auto; }
+  .es-it { min-width:0; }
+  .es-nm { font-family:ui-monospace,Menlo,monospace; font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; gap:6px; align-items:center; }
+  .es-ds { font-size:12px; line-height:1.4; color:var(--es-muted); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .es-dot { width:8px; height:8px; border-radius:50%; flex:none; background:var(--es-muted); }
+  .es-dot.ok { background:var(--es-green); } .es-dot.bad { background:var(--es-red); } .es-dot.warn { background:var(--es-orange); }
+  .es-st { margin-left:auto; font-family:-apple-system,"PingFang TC",sans-serif; font-weight:500; font-size:11.5px; color:var(--es-muted); flex:none; }
+  .es-st.bad { color:var(--es-red); } .es-st.ok { color:var(--es-green); } .es-st.warn { color:var(--es-orange); }
+  .es-nl { color:var(--es-orange); font-size:12px; }
+  .es-empty { font-size:12px; color:var(--es-muted); padding:0 0 10px 20px; }
+  .es-note { margin:2px 0 0; font-size:11.5px; color:var(--es-muted); }
+
+  .es-tiny { height:100%; grid-template-columns:repeat(3,1fr); gap:8px; align-items:center; }
+  .es-tc { text-align:center; min-width:0; }
+  .es-tn { font-size:34px; line-height:38px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .es-tn.na { font-size:13px; line-height:38px; color:var(--es-orange); font-weight:600; }
+  .es-tl { font-size:12px; color:var(--es-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .es-tm { font-size:11px; color:var(--es-muted); margin-top:2px; white-space:nowrap; }
+  .es-tm.bad { color:var(--es-red); }
+
+  @container (max-height: 260px) { .es-full { display:none; } .es-tiny { display:grid; } }
+  @container (max-width: 230px) {
+    .es-tiny { grid-template-columns:1fr; gap:4px; align-content:center; }
+    .es-tc { display:grid; grid-template-columns:30px minmax(0,1fr) auto; align-items:baseline; gap:6px; text-align:left; }
+    .es-tn { font-size:20px; line-height:24px; } .es-tn.na { font-size:12px; line-height:24px; grid-column:1 / 3; }
+    .es-tl { order:0; font-size:11px; } .es-tm { margin:0; font-size:10px; }
+  }
+  @container (min-height: 261px) { .es-full { display:grid; } .es-tiny { display:none; } }
+  @container (min-height: 261px) and (max-width: 230px) { .es-full { grid-template-columns:1fr; } }
+</style>
+<div class="card"><div id="app"></div></div>
+<script>
+const app = document.getElementById('app');
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const NA = '無法讀取';
+const STATUS = { connected: ['ok', 'connected'], failed: ['bad', 'failed'], auth: ['warn', 'needs auth'], configured: ['', 'configured'] };
+const openState = {};
+const bad = (e) => (e.mcp || []).filter((m) => m.status === 'failed').length;
+
+function list(e, key, title, items, render, empty) {
+  const id = e.name + ':' + key;
+  const body = items.length ? '<div class="es-list">' + items.map(render).join('') + '</div>' : '<div class="es-empty">' + empty + '</div>';
+  return '<details data-k="' + esc(id) + '"' + (openState[id] ? ' open' : '') + '><summary>' + title + '<span class="es-n">' + items.length + '</span></summary>' + body + '</details>';
+}
+
+function column(e) {
+  if (!e.readable) return '<div class="es-col"><div class="es-hd"><span class="es-eng">' + esc(e.name) + '</span></div><div class="es-na">' + NA + '</div></div>';
+  const skills = e.skills, mcp = e.mcp, bs = e.botlingSkills || [];
+  const loaded = bs.filter((b) => b.loaded).length;
+  let h = '<div class="es-col"><div class="es-hd"><span class="es-eng">' + esc(e.name) + '</span><span class="es-badge">' + (skills ? skills.length : NA) + ' skills · ' + (mcp ? mcp.length : NA) + ' MCP</span></div>';
+  h += skills ? list(e, 's', 'Skills', skills, (s) => '<div class="es-it"><div class="es-nm" title="' + esc(s.name) + '">' + esc(s.name) + '</div>' + (s.desc ? '<div class="es-ds" title="' + esc(s.desc) + '">' + esc(s.desc) + '</div>' : '') + '</div>', 'None')
+    : '<details><summary>Skills<span class="es-n es-nl">' + NA + '</span></summary></details>';
+  h += mcp ? list(e, 'm', 'MCP servers', mcp, (m) => { const st = STATUS[m.status] || ['', esc(m.status)]; return '<div class="es-it"><div class="es-nm" title="' + esc(m.name) + '"><span class="es-dot ' + st[0] + '"></span>' + esc(m.name) + '<span class="es-st ' + st[0] + '">' + st[1] + '</span></div></div>'; }, 'None')
+    : '<details><summary>MCP servers<span class="es-n es-nl">' + NA + '</span></summary></details>';
+  h += list(e, 'b', 'Botling plugin skills', bs, (b) => '<div class="es-it"><div class="es-nm" title="' + esc(b.plugin + ' / ' + b.name) + '"><span class="es-dot ' + (b.loaded ? 'ok' : '') + '"></span>' + esc(b.plugin) + '<span class="es-st ' + (b.loaded ? 'ok' : '') + '">' + (b.loaded ? 'loaded' : '未載入') + '</span></div>' + (b.desc ? '<div class="es-ds">' + esc(b.desc) + '</div>' : '') + '</div>', 'None');
+  if (bs.length && !loaded) h += '<div class="es-note">Botling 插件技能:未載入</div>';
+  return h + '</div>';
+}
+
+function tiny(e) {
+  if (!e.readable) return '<div class="es-tc"><div class="es-tn na">' + NA + '</div><div class="es-tl">' + esc(e.name) + '</div></div>';
+  const b = bad(e);
+  const m = e.mcp ? e.mcp.length + ' MCP' + (b ? ' · ' + b + ' ✗' : '') : 'MCP ' + NA;
+  return '<div class="es-tc"><div class="es-tn">' + (e.skills ? e.skills.length : '–') + '</div><div class="es-tl">' + esc(e.name) + '</div><div class="es-tm' + (b ? ' bad' : '') + '">' + m + '</div></div>';
+}
+
+function status(es) {
+  const short = { Claude: 'C', Codex: 'X', Antigravity: 'A' };
+  const parts = es.map((e) => (short[e.name] || e.name[0]) + (e.readable && e.skills ? e.skills.length : '?'));
+  const anyBad = es.some((e) => !e.readable || bad(e) > 0);
+  ccb.setStatus({ text: parts.join(' '), tone: anyBad ? 'warning' : 'good' });
+}
+
+function draw(data) {
+  const es = (data && data.engines) || [];
+  if (!es.length) { app.innerHTML = '<div class="es-na">' + NA + '</div>'; ccb.setStatus && ccb.setStatus({ text: NA, tone: 'warning' }); return; }
+  app.innerHTML = '<div class="es-full">' + es.map(column).join('') + '</div><div class="es-tiny">' + es.map(tiny).join('') + '</div>';
+  app.querySelectorAll('details[data-k]').forEach((d) => d.addEventListener('toggle', () => { openState[d.dataset.k] = d.open; }));
+  status(es);
+}
+draw(ccb.data);
+ccb.onData && ccb.onData(draw);
+</script>

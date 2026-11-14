@@ -1,0 +1,16 @@
+{
+  "name": "botling-components-basic",
+  "displayName": "Basic components",
+  "version": "1.0.0",
+  "description": "Generic cards for chats and the Board: commit log, git diff, GitHub CI, changelog, CPU, memory and disk usage, contribution board, architecture diagram, multi-select and more. Each card is a folder in components/ (template.html + about.md).",
+  "license": "MIT",
+  "engines": {
+    "ccb": "^2.0.0"
+  },
+  "ccb": {
+    "permissions": [],
+    "contributes": {
+      "components": "components"
+    }
+  }
+}
