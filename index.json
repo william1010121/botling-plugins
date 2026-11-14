@@ -21,7 +21,7 @@
       "files": 47,
       "size": 346703,
       "sha256": "fded7a4eac6e0790ed0121f14410952ea46e41e54e96c653bac3fb532d537123",
-      "commit": "",
+      "commit": "a93fc02ea058e9c9e3445bff2e10ad01c28cfa8a",
       "components": [
         "architecture-topology",
         "changelog",
@@ -63,7 +63,7 @@
       "files": 16,
       "size": 2767783,
       "sha256": "b242b22055ca92c531a2b6380eef0d7c62c7d28dd351f1218dd98e8d8946f2cf",
-      "commit": ""
+      "commit": "a93fc02ea058e9c9e3445bff2e10ad01c28cfa8a"
     },
     {
       "name": "ccb-session-usage",
@@ -87,7 +87,7 @@
       "files": 20,
       "size": 122399,
       "sha256": "8d81bc1059c268e16bc9f6382390d2959767ec96d72d3b17253a12daf247ce6c",
-      "commit": ""
+      "commit": "a93fc02ea058e9c9e3445bff2e10ad01c28cfa8a"
     },
     {
       "name": "ccb-teams",
@@ -110,7 +110,7 @@
       "files": 5,
       "size": 2192,
       "sha256": "86a4294ab05fd13387adf7497c60cbd09fdbc70350ef5c0820b3fd97c6e070c6",
-      "commit": ""
+      "commit": "a93fc02ea058e9c9e3445bff2e10ad01c28cfa8a"
     },
     {
       "name": "ccb-web-extractors",
@@ -129,7 +129,7 @@
       "files": 7,
       "size": 43119,
       "sha256": "b7b43663c6189915b2b52dd4c6b3f9495a8d6b4ff1cf1dde12aab5c2c55d5567",
-      "commit": ""
+      "commit": "a93fc02ea058e9c9e3445bff2e10ad01c28cfa8a"
     }
   ]
 }

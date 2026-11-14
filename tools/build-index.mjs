@@ -3,10 +3,12 @@
 //
 //   node tools/build-index.mjs           regenerate index.json
 //   node tools/build-index.mjs --check   exit 1 if index.json is out of date (CI)
+//   node tools/build-index.mjs --set-commit <sha>   also fill every empty "commit" with <sha>
+//                                       (the commit that holds the folders as they are now)
 //
 // "sha256" is the hash of the folder's contents: for every file, sorted by path,
 // "<path>\0<sha256 of the file>\n", hashed again. "commit" is kept as it is in the current
-// index.json (empty until a release commit is recorded for that plugin).
+// index.json (empty until a release commit is recorded for that plugin with --set-commit).
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
@@ -14,6 +16,9 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const check = process.argv.includes("--check");
+const setAt = process.argv.indexOf("--set-commit");
+const setCommit = setAt >= 0 ? process.argv[setAt + 1] : null;
+if (setAt >= 0 && !/^[0-9a-f]{40}$/.test(setCommit ?? "")) { console.error("--set-commit needs a full 40-character commit hash"); process.exit(2); }
 const sha = (data) => createHash("sha256").update(data).digest("hex");
 const listFiles = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((e) =>
   e.isDirectory() ? listFiles(join(dir, e.name)) : [join(dir, e.name)]);
@@ -53,7 +58,7 @@ const plugins = folders.map((folder) => {
     files: files.length,
     size,
     sha256: digest,
-    commit: oldCommit.get(pkg.name) ?? "",
+    commit: oldCommit.get(pkg.name) || setCommit || "",
   };
   if (componentsDir && existsSync(componentsDir)) entry.components = readdirSync(componentsDir).filter((n) => statSync(join(componentsDir, n)).isDirectory()).sort();
   if (pkg.name !== folder) throw new Error(`${folder}: package.json name is ${pkg.name}; the folder must be named like the plugin`);
